@@ -1533,11 +1533,19 @@
                         variantBadge = `<span class="status-badge" style="background: #831843; color: #f472b6; border: 1px solid #9d174d;">🎲 Variant: ${escapeHtml(l.metadata.selected_variant)}</span>`;
                     }
 
+                    let dayBadge = '';
+                    if (l.journey_day && l.journey_day.day_number !== undefined) {
+                        dayBadge = `<span class="status-badge" style="background: #065f46; color: #34d399; border: 1px solid #059669; font-weight: 700;">📅 Day ${l.journey_day.day_number}</span>`;
+                    }
+
+                    const dayTitleText = l.journey_day ? `Day ${l.journey_day.day_number}` : '';
+
                     html += `<div class="item-card">
                         <div class="item-card-header">
                             <div class="item-title">
                                 <span>#${idx + 1}</span>
-                                <span>${escapeHtml(l.task_type || 'Task')}</span>
+                                ${dayBadge}
+                                <span>${dayTitleText ? `${dayTitleText} — ` : ''}${escapeHtml(l.task_type || 'Task')}</span>
                                 ${statusPillHtml(l.status)}
                                 ${enrolmentRunBadge}
                                 ${variantBadge}
@@ -1548,6 +1556,7 @@
                             </div>
                         </div>
                         <div class="item-details-grid">
+                            ${detailRow('Journey Day', l.journey_day ? `<strong style="color:#34d399;">Day ${l.journey_day.day_number}</strong> (${escapeHtml(l.journey_day.title || '')})` : (l.journey_day_id ? escapeHtml(l.journey_day_id.substring(0, 13)) + '...' : 'N/A'), 'color: #38bdf8;')}
                             ${detailRow('Task Type', escapeHtml(l.task_type || 'N/A'), 'color: #c084fc; font-weight: 700;')}
                             ${detailRow('Status', escapeHtml(String(l.status || 'N/A')))}
                             ${detailRow('Skip Reason', escapeHtml(l.skip_reason || '—'), l.skip_reason ? 'color: #f87171; font-weight: 600;' : '')}
@@ -1555,7 +1564,6 @@
                             ${detailRow('Executed At', l.executed_at ? fmtDateTime(l.executed_at) : '⏳ Pending', 'font-size: 11px;')}
                             ${detailRow('Execution Latency', latencyTxt)}
                             ${detailRow('Journey ID', l.journey_id ? escapeHtml(l.journey_id.substring(0, 13)) + '...' : 'N/A', 'font-size: 11px;')}
-                            ${detailRow('Journey Day ID', l.journey_day_id ? escapeHtml(l.journey_day_id.substring(0, 13)) + '...' : 'N/A', 'font-size: 11px;')}
                         </div>
                         ${metadataBlock('📦 Task Metadata', l.metadata)}
                     </div>`;
