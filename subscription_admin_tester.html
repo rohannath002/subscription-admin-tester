@@ -869,6 +869,12 @@
                             <option value="true">True (Transfer and archive active enrolment)</option>
                         </select>
 
+                        <label>Force Run All Tasks (Admin Testing Override)</label>
+                        <select id="manual-force-run-all-tasks">
+                            <option value="false">False (Deduplicate; skip if already executed)</option>
+                            <option value="true">True (Force re-schedule all Day 0 tasks fresh)</option>
+                        </select>
+
                         <button class="btn" style="margin-top: 10px; background: #3b82f6;" onclick="manualEnrollCreator()">Manually Enroll / Transfer Creator</button>
                     </div>
 
@@ -948,6 +954,12 @@
                             <option value="true">True (Force expire previous active/pending offers)</option>
                         </select>
 
+                        <label>Force Run All Tasks (Admin Testing Override)</label>
+                        <select id="advance-force-run-all-tasks">
+                            <option value="false">False (Deduplicate; skip if already executed)</option>
+                            <option value="true">True (Force re-schedule all day tasks fresh)</option>
+                        </select>
+
                         <button class="btn" style="margin-top: 10px; background: #6366f1; width: 100%;" onclick="advanceCreatorDay()">⚡ Advance Journey Day</button>
                     </div>
 
@@ -983,7 +995,7 @@
         const BASE_URL = 'https://movie-repeated-sandstone.ngrok-free.dev/api/v1/admin/subscription-journey';
         const DEFAULT_ADMIN_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InJvaGFuQGluZmx1aXNoLmNvbSIsImlkIjoiYWQwNTAwMWUtYTZlYi00ZjhlLTliNmYtYjgxOTJkMDhhOGU5IiwiaWF0IjoxNzg4NzcyMDI4fQ.th31Nih-WIR1XnhIYaFMoDoLAmofNuYKHLsPZbxwKd0';
         const DEFAULT_CREATOR_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwaG9uZU51bWJlciI6Iis5MTc4Nzg2NjE0NTEiLCJ1c2VySWQiOiJkYjEwNThiZi1iNTc1LTQzZjEtODk1Ni1lODk5OGI5NmI0OGMiLCJ1c2VyVHlwZSI6ImluZmx1ZW5jZXIiLCJqdGkiOiI2YjdkMDg2Yi1hMGQxLTRjZDMtYmVlZi1kYWE3OTA4NTg1YWUiLCJpYXQiOjE3ODg3NjMwOTR9.yt_PNbXKW5E5mLLtTY2e0AhsJCJ7Oua6_vfU7Sa9_cQ';
-        const DEFAULT_CREATOR_ID = 'f485bf3e-4b7b-4d0d-a15d-504d1e151bed';
+        const DEFAULT_CREATOR_ID = '47246da6-f41b-410a-8349-4600eb0cc466';
         const HEADERS = {
             'Content-Type': 'application/json',
             'ngrok-skip-browser-warning': 'true',
@@ -1512,20 +1524,45 @@
                     }
 
                     let enrolmentRunBadge = '';
-                    let isCurrentRun = false;
-                    if (enrolment && enrolment.enrolled_at) {
-                        const enrolledTime = new Date(enrolment.enrolled_at).getTime();
-                        if (l.executed_at) {
-                            isCurrentRun = new Date(l.executed_at).getTime() >= enrolledTime;
-                        } else if (l.status === 'PENDING' && l.scheduled_at) {
-                            isCurrentRun = new Date(l.scheduled_at).getTime() >= enrolledTime;
-                        }
-                    }
-
-                    if (isCurrentRun) {
+                    if (l.enrolment_id) {
                         enrolmentRunBadge = '<span class="status-pill-active" style="background: #1e1b4b; color: #a5b4fc; border: 1px solid #6366f1;">🎯 Active Enrolment Run</span>';
+                    } else if (l.history_id) {
+                        let epNum = '';
+                        if (history && history.length > 0) {
+                            const hIdx = history.findIndex(h => h.id === l.history_id);
+                            if (hIdx !== -1) {
+                                epNum = ` (Episode #${history.length - hIdx})`;
+                            }
+                        }
+                        enrolmentRunBadge = `<span class="status-pill-inactive" style="background: #1f2937; color: #9ca3af; border: 1px solid #374151;">📜 Past Run${epNum}</span>`;
                     } else {
-                        enrolmentRunBadge = '<span class="status-pill-inactive" style="background: #1f2937; color: #9ca3af; border: 1px solid #374151;">📜 Past Enrolment Run</span>';
+                        let isCurrentRun = false;
+                        if (enrolment && enrolment.enrolled_at) {
+                            const enrolledTime = new Date(enrolment.enrolled_at).getTime();
+                            if (l.executed_at) {
+                                isCurrentRun = new Date(l.executed_at).getTime() >= enrolledTime;
+                            } else if (l.status === 'PENDING' && l.scheduled_at) {
+                                isCurrentRun = new Date(l.scheduled_at).getTime() >= enrolledTime;
+                            }
+                        }
+
+                        if (isCurrentRun) {
+                            enrolmentRunBadge = '<span class="status-pill-active" style="background: #1e1b4b; color: #a5b4fc; border: 1px solid #6366f1;">🎯 Active Enrolment Run</span>';
+                        } else {
+                            let episodeLabel = '📜 Past Enrolment Run';
+                            if (history && history.length > 0) {
+                                const logTime = new Date(l.executed_at || l.scheduled_at).getTime();
+                                const matchedIdx = history.findIndex(h => {
+                                    const start = new Date(h.started_at).getTime();
+                                    const end = new Date(h.ended_at).getTime();
+                                    return logTime >= (start - 1000) && logTime <= (end + 1000);
+                                });
+                                if (matchedIdx !== -1) {
+                                    episodeLabel = `📜 Past Run (Episode #${history.length - matchedIdx})`;
+                                }
+                            }
+                            enrolmentRunBadge = `<span class="status-pill-inactive" style="background: #1f2937; color: #9ca3af; border: 1px solid #374151;">${escapeHtml(episodeLabel)}</span>`;
+                        }
                     }
 
                     let variantBadge = '';
@@ -2668,7 +2705,8 @@
                 const body = {
                     influencer_id: influencerId,
                     journey_id: journeyId,
-                    override_existing: document.getElementById('manual-override-existing').value === 'true'
+                    override_existing: document.getElementById('manual-override-existing').value === 'true',
+                    force_run_all_tasks: document.getElementById('manual-force-run-all-tasks')?.value === 'true'
                 };
                 const res = await fetch(`${BASE_URL}/enrolments/enroll-manual`, {
                     method: 'POST',
@@ -2745,10 +2783,12 @@
             const targetDayVal = document.getElementById('advance-target-day').value;
             const runImmediately = document.getElementById('advance-run-immediately').value === 'true';
             const expireOffers = document.getElementById('advance-expire-offers')?.value === 'true';
+            const forceRunAllTasks = document.getElementById('advance-force-run-all-tasks')?.value === 'true';
 
             const body = {
                 run_immediately: runImmediately,
-                expire_previous_offers: expireOffers
+                expire_previous_offers: expireOffers,
+                force_run_all_tasks: forceRunAllTasks
             };
             if (targetDayVal !== '') {
                 body.target_day_number = parseInt(targetDayVal);
