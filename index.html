@@ -325,6 +325,20 @@
         <h1>🚀 Subscription Phase 2 API Tester</h1>
         <p style="color: var(--text-muted);">Use this dashboard to test the APIs as they are built, module by module.</p>
 
+        <!-- API CONFIGURATION & STATUS BAR -->
+        <div style="background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 12px 16px; margin-bottom: 25px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 320px;">
+                <span style="font-weight: 700; font-size: 13px; color: #a5b4fc; white-space: nowrap;">🌐 Backend API Base:</span>
+                <input type="text" id="config-base-url" style="flex: 1; padding: 6px 10px; font-size: 13px; background: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 6px;" onchange="updateBaseUrl(this.value)">
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <button type="button" class="btn" style="padding: 5px 12px; font-size: 12px; background: #2563eb;" onclick="setEndpointPreset('http://localhost:3000/api/v1/admin/subscription-journey')">💻 Localhost:3000</button>
+                <button type="button" class="btn" style="padding: 5px 12px; font-size: 12px; background: #475569;" onclick="setEndpointPreset('https://movie-repeated-sandstone.ngrok-free.dev/api/v1/admin/subscription-journey')">☁️ Ngrok</button>
+                <button type="button" class="btn btn-secondary" style="padding: 5px 12px; font-size: 12px;" onclick="reloadAllTesterData()">🔄 Reload All Dropdowns</button>
+                <span id="api-status-badge" style="font-size: 12px; padding: 4px 10px; border-radius: 12px; background: #374151; color: #9ca3af; font-weight: 600;">⚪ Checking...</span>
+            </div>
+        </div>
+
         <!-- STEP 1: PLAN MODULE -->
         <div class="section" id="step1-plan">
             <h2>📌 Step 1: SubscriptionPlan Module <span class="badge">ACTIVE</span></h2>
@@ -799,7 +813,10 @@
 
                 <div style="flex: 0.8;">
                     <h3>List & Manage Journey Days</h3>
-                    <label>Filter by Journey</label>
+                    <label style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Filter by Journey</span>
+                        <button type="button" onclick="loadJourneysDropdown()" style="padding: 3px 10px; font-size: 11px; font-weight: 600; margin: 0; width: auto; background: #374151; color: #f9fafb; border: 1px solid #4b5563; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6"/><path d="M2 11.5a10 10 0 0 1 18.8-4.3L21.5 8M22 12.5a10 10 0 0 1-18.8 4.3L2.5 16"/></svg> Refresh Journeys</button>
+                    </label>
                     <select id="day-query-journey-id" style="margin-bottom: 10px;">
                         <option value="">-- Select Subscription Journey --</option>
                     </select>
@@ -815,14 +832,122 @@
                         <button class="btn" style="background: #dc2626; flex: 1;" onclick="deleteJourneyDay()">Delete Day</button>
                     </div>
 
-                    <h3 style="margin-top: 20px;">Manage Standalone Task</h3>
+                    <h3 style="margin-top: 20px;">Manage & Edit Standalone Task</h3>
                     <label>Target Task ID (UUID)</label>
                     <input type="text" id="task-target-id" placeholder="Paste Task UUID here">
                     
-                    <div style="display: flex; gap: 8px; margin-top: 5px; flex-wrap: wrap;">
-                        <button class="btn" style="background: #3b82f6; flex: 1;" onclick="getTaskById()">Get Task By ID</button>
-                        <button class="btn" style="background: #f59e0b; flex: 1;" onclick="updateTask()">Update Task</button>
-                        <button class="btn" style="background: #dc2626; flex: 1;" onclick="deleteTask()">Delete Task</button>
+                    <div style="display: flex; gap: 8px; margin-top: 5px; margin-bottom: 12px; flex-wrap: wrap;">
+                        <button class="btn" style="background: #3b82f6; flex: 1;" onclick="getTaskById()">📥 Load Task Into Form</button>
+                        <button class="btn" style="background: #dc2626; flex: 0.6;" onclick="deleteTask()">Delete</button>
+                    </div>
+
+                    <!-- STANDALONE TASK EDIT FORM -->
+                    <div id="standalone-task-edit-form" style="display: none; background: rgba(15, 23, 42, 0.9); border: 1px solid #334155; border-radius: 8px; padding: 14px; margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #1e293b; padding-bottom: 8px;">
+                            <h4 style="margin: 0; color: #38bdf8; font-size: 13px;">✏️ Edit Task: <span id="edit-task-badge" style="font-family: monospace; color: #93c5fd;"></span></h4>
+                            <button type="button" onclick="closeStandaloneTaskEdit()" style="background: transparent; border: none; color: #94a3b8; cursor: pointer; font-size: 14px;">✖</button>
+                        </div>
+
+                        <div class="grid" style="margin-bottom: 8px;">
+                            <div>
+                                <label>Task Title</label>
+                                <input type="text" id="edit-task-title" placeholder="e.g. 15-Min Abandonment Recovery">
+                            </div>
+                            <div>
+                                <label>Task Type</label>
+                                <select id="edit-task-type">
+                                    <option value="GRANT_OFFER">GRANT_OFFER</option>
+                                    <option value="SEND_WABA">SEND_WABA</option>
+                                    <option value="SEND_PUSH">SEND_PUSH</option>
+                                    <option value="TRACK_ABANDONMENT">TRACK_ABANDONMENT</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid" style="margin-bottom: 8px;">
+                            <div>
+                                <label>Trigger Event</label>
+                                <select id="edit-task-trigger">
+                                    <option value="IMMEDIATE">IMMEDIATE</option>
+                                    <option value="ON_SCREEN_VISIT">ON_SCREEN_VISIT</option>
+                                    <option value="AFTER_SIGNUP">AFTER_SIGNUP</option>
+                                    <option value="AFTER_IG_CONNECT">AFTER_IG_CONNECT</option>
+                                    <option value="BEFORE_OFFER_EXPIRY">BEFORE_OFFER_EXPIRY</option>
+                                    <option value="AFTER_OFFER_EXPIRY">AFTER_OFFER_EXPIRY</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>Delay (Minutes)</label>
+                                <input type="number" id="edit-task-delay" placeholder="0">
+                            </div>
+                        </div>
+
+                        <div class="grid" style="margin-bottom: 8px;">
+                            <div>
+                                <label>Linked Offer (for GRANT_OFFER)</label>
+                                <select id="edit-task-offer">
+                                    <option value="">-- No Offer Linked --</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>WABA Template Code</label>
+                                <input type="text" id="edit-task-waba" placeholder="e.g. sub_waba_d0_intro">
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 8px;">
+                            <label>Push Notification Template</label>
+                            <select id="edit-task-push">
+                                <option value="">-- None / Custom --</option>
+                            </select>
+                        </div>
+
+                        <div class="grid" style="margin-bottom: 8px;">
+                            <div>
+                                <label>Target: Is IG Connected?</label>
+                                <select id="edit-task-cond-ig">
+                                    <option value="">None (Any)</option>
+                                    <option value="true">True</option>
+                                    <option value="false">False</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>Sort Order</label>
+                                <input type="number" id="edit-task-sort" value="0">
+                            </div>
+                        </div>
+
+                        <div class="grid" style="margin-bottom: 8px;">
+                            <div>
+                                <label>Offer Reveal Mode</label>
+                                <select id="edit-task-reveal-mode">
+                                    <option value="MANUAL">MANUAL (Hidden behind scratch/tap)</option>
+                                    <option value="AUTOMATIC">AUTOMATIC (Auto-play 2s Loading)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>Start Timer on Grant?</label>
+                                <select id="edit-task-start-timer-grant">
+                                    <option value="false">False (Pause timer until tapped)</option>
+                                    <option value="true">True (Start countdown immediately)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid" style="margin-bottom: 12px;">
+                            <div>
+                                <label>Is Active?</label>
+                                <select id="edit-task-is-active">
+                                    <option value="true">True</option>
+                                    <option value="false">False</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn" style="flex: 1; background: #f59e0b; color: #1e1e2e; font-weight: 700;" onclick="updateTask()">💾 Save & Apply Task Updates (PATCH)</button>
+                            <button class="btn btn-secondary" style="flex: 0.3;" onclick="closeStandaloneTaskEdit()">Cancel</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -944,8 +1069,8 @@
                         <label>Target Creator (Influencer) UUID</label>
                         <input type="text" id="advance-creator-id" placeholder="Paste Creator (Influencer) UUID here">
 
-                        <label>Target Day Number (Optional — leave blank to advance by +1 day)</label>
-                        <input type="number" id="advance-target-day" placeholder="e.g. 1" min="0">
+                        <label>Target Day Number (Optional — leave blank to advance by +1 day; set to 0 to reset/rewind to Day 0)</label>
+                        <input type="number" id="advance-target-day" placeholder="e.g. 0 (reset to Day 0) or 1, 2..." min="0">
 
                         <label>Run Immediately?</label>
                         <select id="advance-run-immediately">
@@ -992,7 +1117,45 @@
     </div>
 
     <script>
-        const BASE_URL = 'https://movie-repeated-sandstone.ngrok-free.dev/api/v1/admin/subscription-journey';
+        let BASE_URL = localStorage.getItem('tester_base_url') || (
+            window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:'
+                ? 'http://localhost:3000/api/v1/admin/subscription-journey'
+                : 'https://movie-repeated-sandstone.ngrok-free.dev/api/v1/admin/subscription-journey'
+        );
+
+        function updateBaseUrl(newUrl) {
+            if (!newUrl) return;
+            BASE_URL = newUrl.trim().replace(/\/+$/, '');
+            localStorage.setItem('tester_base_url', BASE_URL);
+            const input = document.getElementById('config-base-url');
+            if (input) input.value = BASE_URL;
+            showToast(`API Base set to: ${BASE_URL}`);
+            reloadAllTesterData();
+        }
+
+        function setEndpointPreset(url) {
+            updateBaseUrl(url);
+        }
+
+        async function reloadAllTesterData() {
+            const badge = document.getElementById('api-status-badge');
+            if (badge) {
+                badge.style.background = '#854d0e';
+                badge.style.color = '#fef08a';
+                badge.innerText = '⏳ Connecting...';
+            }
+            try {
+                await Promise.allSettled([
+                    loadPlansDropdown(),
+                    loadJourneysDropdown(),
+                    loadOffersDropdown(),
+                    loadNotificationTemplates()
+                ]);
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
         const DEFAULT_ADMIN_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InJvaGFuQGluZmx1aXNoLmNvbSIsImlkIjoiYWQwNTAwMWUtYTZlYi00ZjhlLTliNmYtYjgxOTJkMDhhOGU5IiwiaWF0IjoxNzg4NzcyMDI4fQ.th31Nih-WIR1XnhIYaFMoDoLAmofNuYKHLsPZbxwKd0';
         const DEFAULT_CREATOR_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwaG9uZU51bWJlciI6Iis5MTc4Nzg2NjE0NTEiLCJ1c2VySWQiOiJkYjEwNThiZi1iNTc1LTQzZjEtODk1Ni1lODk5OGI5NmI0OGMiLCJ1c2VyVHlwZSI6ImluZmx1ZW5jZXIiLCJqdGkiOiI2YjdkMDg2Yi1hMGQxLTRjZDMtYmVlZi1kYWE3OTA4NTg1YWUiLCJpYXQiOjE3ODg3NjMwOTR9.yt_PNbXKW5E5mLLtTY2e0AhsJCJ7Oua6_vfU7Sa9_cQ';
         const DEFAULT_CREATOR_ID = '47246da6-f41b-410a-8349-4600eb0cc466';
@@ -1208,6 +1371,8 @@
                     const btnColor = item.is_active ? '#dc2626' : '#059669';
                     const btnText = item.is_active ? '⏸ Deactivate' : '▶ Activate';
                     idCopyButtons += `<button class="btn" style="padding: 2px 8px; font-size: 11px; background: ${btnColor}; margin-left: 4px;" onclick="toggleJourneyActiveStatus('${escapeHtml(item.id)}', ${nextActive})">${btnText}</button>`;
+                } else if (isTask) {
+                    idCopyButtons += `<button class="btn" style="padding: 2px 8px; font-size: 11px; background: #3b82f6; margin-left: 4px;" onclick="loadTaskForEdit('${escapeHtml(item.id)}')">✏️ Edit Task</button>`;
                 }
             }
 
@@ -1343,7 +1508,10 @@
                     nestedTasksHtml += `<div style="background: #0f172a; padding: 8px 12px; border-radius: 6px; border: 1px solid #1e293b; display: flex; flex-direction: column; gap: 6px; font-size: 12px;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <span><strong style="color: #f3f4f6;">${escapeHtml(t.title || t.task_type)}</strong> <span style="color: #94a3b8;">(${t.task_type} • ${t.trigger_event} • ${t.delay_minutes}m delay)</span></span>
-                            ${t.id ? `<span class="item-id-pill" onclick="copyAndFill('${t.id}', 'task-target-id', 'Task ID')">Task ID: ${t.id.substring(0, 8)}...</span>` : ''}
+                            <div style="display: flex; align-items: center; gap: 4px;">
+                                ${t.id ? `<span class="item-id-pill" onclick="copyAndFill('${t.id}', 'task-target-id', 'Task ID')">Task ID: ${t.id.substring(0, 8)}...</span>` : ''}
+                                ${t.id ? `<button class="btn" style="padding: 2px 7px; font-size: 11px; background: #3b82f6;" onclick="loadTaskForEdit('${t.id}')">✏️ Edit</button>` : ''}
+                            </div>
                         </div>
                         ${(wabaTag || pushTag || offerTag || revealTag) ? `<div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 2px;">${wabaTag} ${pushTag} ${offerTag} ${revealTag}</div>` : ''}
                     </div>`;
@@ -1421,12 +1589,14 @@
         // --- FULL AUDIT TRAIL TRAJECTORY RENDERER (GET /audit-trail?influencer_id=...) ---
         window.currentAuditTrailData = null;
         window.currentAuditTrailFilter = 'ALL';
+        window.currentAuditTrailStatusFilter = 'ALL';
+        window.currentAuditTrailDayFilter = 'ALL';
 
         function filterAuditTrailLogs(filterType, scrollIntoView) {
             window.currentAuditTrailFilter = filterType;
             const container = document.getElementById('audit-trail-task-logs-container');
             if (container && window.currentAuditTrailData) {
-                renderAuditTrailTaskLogsContainer(container, window.currentAuditTrailData, window.currentAuditTrailFilter);
+                renderAuditTrailTaskLogsContainer(container, window.currentAuditTrailData, window.currentAuditTrailFilter, window.currentAuditTrailStatusFilter, window.currentAuditTrailDayFilter);
                 if (scrollIntoView) {
                     container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 }
@@ -1434,9 +1604,35 @@
         }
         window.filterAuditTrailLogs = filterAuditTrailLogs;
 
+        function filterAuditTrailStatus(statusType, scrollIntoView) {
+            window.currentAuditTrailStatusFilter = statusType;
+            const container = document.getElementById('audit-trail-task-logs-container');
+            if (container && window.currentAuditTrailData) {
+                renderAuditTrailTaskLogsContainer(container, window.currentAuditTrailData, window.currentAuditTrailFilter, window.currentAuditTrailStatusFilter, window.currentAuditTrailDayFilter);
+                if (scrollIntoView) {
+                    container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }
+        }
+        window.filterAuditTrailStatus = filterAuditTrailStatus;
+
+        function filterAuditTrailDay(dayVal, scrollIntoView) {
+            window.currentAuditTrailDayFilter = dayVal;
+            const container = document.getElementById('audit-trail-task-logs-container');
+            if (container && window.currentAuditTrailData) {
+                renderAuditTrailTaskLogsContainer(container, window.currentAuditTrailData, window.currentAuditTrailFilter, window.currentAuditTrailStatusFilter, window.currentAuditTrailDayFilter);
+                if (scrollIntoView) {
+                    container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }
+        }
+        window.filterAuditTrailDay = filterAuditTrailDay;
+
         function renderAuditTrailView(container, d) {
             window.currentAuditTrailData = d;
             window.currentAuditTrailFilter = d.active_enrolment ? 'ACTIVE' : 'ALL';
+            window.currentAuditTrailStatusFilter = 'ALL';
+            window.currentAuditTrailDayFilter = 'ALL';
 
             const creator = d.creator || {};
             const enrolment = d.active_enrolment;
@@ -1546,12 +1742,16 @@
 
             container.innerHTML = html;
 
-            renderAuditTrailTaskLogsContainer(document.getElementById('audit-trail-task-logs-container'), d, window.currentAuditTrailFilter);
+            renderAuditTrailTaskLogsContainer(document.getElementById('audit-trail-task-logs-container'), d, window.currentAuditTrailFilter, window.currentAuditTrailStatusFilter);
         }
 
 
 
-        function renderAuditTrailTaskLogsContainer(container, d, activeFilter) {
+        function renderAuditTrailTaskLogsContainer(container, d, activeFilter, activeStatusFilter, activeDayFilter) {
+            activeFilter = activeFilter || window.currentAuditTrailFilter || 'ALL';
+            activeStatusFilter = activeStatusFilter || window.currentAuditTrailStatusFilter || 'ALL';
+            activeDayFilter = activeDayFilter || window.currentAuditTrailDayFilter || 'ALL';
+
             const enrolment = d.active_enrolment;
             const history = Array.isArray(d.journey_history) ? d.journey_history : [];
             const logs = Array.isArray(d.task_execution_logs) ? d.task_execution_logs : [];
@@ -1570,15 +1770,49 @@
             const activeLogsCount = logs.filter(isLogActiveRun).length;
             const pastLogsCount = logs.length - activeLogsCount;
 
-            let filteredLogs = logs;
+            // 1. Filter by trajectory run first
+            let trajectoryLogs = logs;
             if (activeFilter === 'ACTIVE') {
-                filteredLogs = logs.filter(isLogActiveRun);
+                trajectoryLogs = logs.filter(isLogActiveRun);
             } else if (activeFilter === 'PAST') {
-                filteredLogs = logs.filter(l => !isLogActiveRun(l));
+                trajectoryLogs = logs.filter(l => !isLogActiveRun(l));
             } else if (activeFilter !== 'ALL') {
-                filteredLogs = logs.filter(l => l.history_id === activeFilter);
+                trajectoryLogs = logs.filter(l => l.history_id === activeFilter);
             }
 
+            // 2. Compute status counts and available days within current trajectory run
+            const statusCounts = {};
+            const availableDaysMap = {};
+            trajectoryLogs.forEach(l => {
+                const k = String(l.status || 'UNKNOWN').toUpperCase();
+                statusCounts[k] = (statusCounts[k] || 0) + 1;
+
+                const dNum = l.journey_day?.day_number;
+                const dKey = (dNum !== undefined && dNum !== null) ? String(dNum) : 'NO_DAY';
+                availableDaysMap[dKey] = (availableDaysMap[dKey] || 0) + 1;
+            });
+
+            const sortedDayKeys = Object.keys(availableDaysMap).filter(k => k !== 'NO_DAY').sort((a, b) => Number(a) - Number(b));
+            if (availableDaysMap['NO_DAY']) sortedDayKeys.push('NO_DAY');
+
+            const executedCount = statusCounts['EXECUTED'] || 0;
+            const skippedCount = statusCounts['SKIPPED'] || 0;
+            const pendingCount = statusCounts['PENDING'] || 0;
+
+            // 3. Filter by status (SKIPPED, EXECUTED, PENDING) and day (Day 0, Day 1, etc.)
+            let filteredLogs = trajectoryLogs;
+            if (activeStatusFilter !== 'ALL') {
+                filteredLogs = filteredLogs.filter(l => String(l.status || 'UNKNOWN').toUpperCase() === activeStatusFilter);
+            }
+            if (activeDayFilter !== 'ALL') {
+                if (activeDayFilter === 'NO_DAY') {
+                    filteredLogs = filteredLogs.filter(l => l.journey_day?.day_number === undefined || l.journey_day?.day_number === null);
+                } else {
+                    filteredLogs = filteredLogs.filter(l => String(l.journey_day?.day_number) === String(activeDayFilter));
+                }
+            }
+
+            // 4. Sort day-wise and chronologically
             filteredLogs = [...filteredLogs].sort((a, b) => {
                 const dayA = a.journey_day?.day_number;
                 const dayB = b.journey_day?.day_number;
@@ -1591,43 +1825,107 @@
                 return timeA - timeB;
             });
 
-            const statusCounts = {};
-            filteredLogs.forEach(l => {
-                const k = String(l.status || 'UNKNOWN').toUpperCase();
-                statusCounts[k] = (statusCounts[k] || 0) + 1;
-            });
-
-            let html = auditSectionHeader(`⚡ Task Execution Logs (${filteredLogs.length} of ${logs.length} shown, day-wise: Day 0, 1, 2...)`, filteredLogs.length);
+            const filterBadges = [];
+            if (activeStatusFilter !== 'ALL') filterBadges.push(`Status: [${activeStatusFilter}]`);
+            if (activeDayFilter !== 'ALL') filterBadges.push(`Day: [${activeDayFilter === 'NO_DAY' ? 'General' : `Day ${activeDayFilter}`}]`);
+            const headerFilterText = filterBadges.length > 0 ? ` • Filtered by ${filterBadges.join(', ')}` : '';
+            let html = auditSectionHeader(`⚡ Task Execution Logs (${filteredLogs.length} of ${logs.length} shown${headerFilterText}, day-wise: Day 0, 1, 2...)`, filteredLogs.length);
 
             // Filter Control Toolbar
-            html += `<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; padding: 10px 12px; background: #0b1329; border: 1px solid #1e293b; border-radius: 8px;">
-                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                    <span style="font-size: 12px; font-weight: 700; color: #94a3b8;">Filter Trajectory Run:</span>
-                    <button class="btn" style="padding: 4px 10px; font-size: 11px; background: ${activeFilter === 'ALL' ? '#3b82f6' : '#1e293b'}; color: #fff; border: 1px solid ${activeFilter === 'ALL' ? '#60a5fa' : '#334155'};" onclick="filterAuditTrailLogs('ALL')">All Logs (${logs.length})</button>
-                    ${enrolment ? `<button class="btn" style="padding: 4px 10px; font-size: 11px; background: ${activeFilter === 'ACTIVE' ? '#4f46e5' : '#1e293b'}; color: #a5b4fc; border: 1px solid ${activeFilter === 'ACTIVE' ? '#818cf8' : '#334155'};" onclick="filterAuditTrailLogs('ACTIVE')">🎯 Active Run (${activeLogsCount})</button>` : ''}
-                    ${history.length > 0 ? `<button class="btn" style="padding: 4px 10px; font-size: 11px; background: ${activeFilter === 'PAST' ? '#475569' : '#1e293b'}; color: #9ca3af; border: 1px solid ${activeFilter === 'PAST' ? '#94a3b8' : '#334155'};" onclick="filterAuditTrailLogs('PAST')">📜 Past Runs (${pastLogsCount})</button>` : ''}
+            html += `<div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; padding: 10px 12px; background: #0b1329; border: 1px solid #1e293b; border-radius: 8px;">
+                <!-- Row 1: Filter Trajectory Run -->
+                <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px;">
+                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                        <span style="font-size: 12px; font-weight: 700; color: #94a3b8; min-width: 130px;">Filter Trajectory Run:</span>
+                        <button class="btn" style="padding: 4px 10px; font-size: 11px; background: ${activeFilter === 'ALL' ? '#3b82f6' : '#1e293b'}; color: #fff; border: 1px solid ${activeFilter === 'ALL' ? '#60a5fa' : '#334155'};" onclick="filterAuditTrailLogs('ALL')">All Logs (${logs.length})</button>
+                        ${enrolment ? `<button class="btn" style="padding: 4px 10px; font-size: 11px; background: ${activeFilter === 'ACTIVE' ? '#4f46e5' : '#1e293b'}; color: #a5b4fc; border: 1px solid ${activeFilter === 'ACTIVE' ? '#818cf8' : '#334155'};" onclick="filterAuditTrailLogs('ACTIVE')">🎯 Active Run (${activeLogsCount})</button>` : ''}
+                        ${history.length > 0 ? `<button class="btn" style="padding: 4px 10px; font-size: 11px; background: ${activeFilter === 'PAST' ? '#475569' : '#1e293b'}; color: #9ca3af; border: 1px solid ${activeFilter === 'PAST' ? '#94a3b8' : '#334155'};" onclick="filterAuditTrailLogs('PAST')">📜 Past Runs (${pastLogsCount})</button>` : ''}
+                    </div>
+                    ${history.length > 0 ? `
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span style="font-size: 11px; color: #94a3b8;">Specific Episode:</span>
+                        <select style="padding: 4px 8px; font-size: 11px; background: #1e293b; color: #cbd5e1; border: 1px solid #334155; border-radius: 4px;" onchange="filterAuditTrailLogs(this.value)">
+                            <option value="ALL" ${activeFilter === 'ALL' ? 'selected' : ''}>-- All Runs (${logs.length}) --</option>
+                            ${enrolment ? `<option value="ACTIVE" ${activeFilter === 'ACTIVE' ? 'selected' : ''}>🎯 Active Enrolment (${activeLogsCount})</option>` : ''}
+                            ${history.map((h, i) => `<option value="${h.id}" ${activeFilter === h.id ? 'selected' : ''}>📜 Episode #${history.length - i}: Day ${h.final_day_number} (${h.exit_reason})</option>`).join('')}
+                        </select>
+                    </div>` : ''}
                 </div>
-                ${history.length > 0 ? `
-                <div style="display: flex; align-items: center; gap: 6px;">
-                    <span style="font-size: 11px; color: #94a3b8;">Specific Episode:</span>
-                    <select style="padding: 4px 8px; font-size: 11px; background: #1e293b; color: #cbd5e1; border: 1px solid #334155; border-radius: 4px;" onchange="filterAuditTrailLogs(this.value)">
-                        <option value="ALL" ${activeFilter === 'ALL' ? 'selected' : ''}>-- All Runs (${logs.length}) --</option>
-                        ${enrolment ? `<option value="ACTIVE" ${activeFilter === 'ACTIVE' ? 'selected' : ''}>🎯 Active Enrolment (${activeLogsCount})</option>` : ''}
-                        ${history.map((h, i) => `<option value="${h.id}" ${activeFilter === h.id ? 'selected' : ''}>📜 Episode #${history.length - i}: Day ${h.final_day_number} (${h.exit_reason})</option>`).join('')}
-                    </select>
-                </div>` : ''}
+
+                <!-- Row 2: Filter Task Status (SKIPPED, EXECUTED, PENDING) -->
+                <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; padding-top: 8px; border-top: 1px dashed #1e293b;">
+                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                        <span style="font-size: 12px; font-weight: 700; color: #94a3b8; min-width: 130px;">Filter Task Status:</span>
+                        <button class="btn" style="padding: 4px 10px; font-size: 11px; background: ${activeStatusFilter === 'ALL' ? '#3b82f6' : '#1e293b'}; color: #fff; border: 1px solid ${activeStatusFilter === 'ALL' ? '#60a5fa' : '#334155'};" onclick="filterAuditTrailStatus('ALL')">All Statuses (${trajectoryLogs.length})</button>
+                        <button class="btn" style="padding: 4px 10px; font-size: 11px; background: ${activeStatusFilter === 'EXECUTED' ? '#1e3a8a' : '#1e293b'}; color: ${activeStatusFilter === 'EXECUTED' ? '#93c5fd' : '#cbd5e1'}; border: 1px solid ${activeStatusFilter === 'EXECUTED' ? '#3b82f6' : '#334155'}; font-weight: ${activeStatusFilter === 'EXECUTED' ? '700' : 'normal'};" onclick="filterAuditTrailStatus('EXECUTED')">✅ EXECUTED (${executedCount})</button>
+                        <button class="btn" style="padding: 4px 10px; font-size: 11px; background: ${activeStatusFilter === 'SKIPPED' ? '#3b0764' : '#1e293b'}; color: ${activeStatusFilter === 'SKIPPED' ? '#d8b4fe' : '#cbd5e1'}; border: 1px solid ${activeStatusFilter === 'SKIPPED' ? '#9333ea' : '#334155'}; font-weight: ${activeStatusFilter === 'SKIPPED' ? '700' : 'normal'};" onclick="filterAuditTrailStatus('SKIPPED')">⏭️ SKIPPED (${skippedCount})</button>
+                        <button class="btn" style="padding: 4px 10px; font-size: 11px; background: ${activeStatusFilter === 'PENDING' ? '#78350f' : '#1e293b'}; color: ${activeStatusFilter === 'PENDING' ? '#fde68a' : '#cbd5e1'}; border: 1px solid ${activeStatusFilter === 'PENDING' ? '#d97706' : '#334155'}; font-weight: ${activeStatusFilter === 'PENDING' ? '700' : 'normal'};" onclick="filterAuditTrailStatus('PENDING')">⏳ PENDING (${pendingCount})</button>
+                        ${Object.keys(statusCounts).filter(k => !['EXECUTED', 'SKIPPED', 'PENDING'].includes(k)).map(k => `
+                            <button class="btn" style="padding: 4px 10px; font-size: 11px; background: ${activeStatusFilter === k ? '#7f1d1d' : '#1e293b'}; color: ${activeStatusFilter === k ? '#fca5a5' : '#cbd5e1'}; border: 1px solid ${activeStatusFilter === k ? '#b91c1c' : '#334155'};" onclick="filterAuditTrailStatus('${k}')">${escapeHtml(k)} (${statusCounts[k]})</button>
+                        `).join('')}
+                    </div>
+                    ${activeStatusFilter !== 'ALL' ? `
+                    <button class="btn" style="padding: 3px 8px; font-size: 11px; background: transparent; color: #f87171; border: 1px solid #7f1d1d; border-radius: 4px;" onclick="filterAuditTrailStatus('ALL')">✕ Clear Status Filter</button>
+                    ` : ''}
+                </div>
+
+                <!-- Row 3: Filter Journey Day (Day 0, Day 1, Day 2...) -->
+                <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; padding-top: 8px; border-top: 1px dashed #1e293b;">
+                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                        <span style="font-size: 12px; font-weight: 700; color: #94a3b8; min-width: 130px;">Filter Journey Day:</span>
+                        <button class="btn" style="padding: 4px 10px; font-size: 11px; background: ${activeDayFilter === 'ALL' ? '#3b82f6' : '#1e293b'}; color: #fff; border: 1px solid ${activeDayFilter === 'ALL' ? '#60a5fa' : '#334155'};" onclick="filterAuditTrailDay('ALL')">All Days (${trajectoryLogs.length})</button>
+                        ${sortedDayKeys.map(k => {
+                            const isSelected = String(activeDayFilter) === String(k);
+                            if (k === 'NO_DAY') {
+                                return `<button class="btn" style="padding: 4px 10px; font-size: 11px; background: ${isSelected ? '#334155' : '#1e293b'}; color: ${isSelected ? '#f1f5f9' : '#94a3b8'}; border: 1px solid ${isSelected ? '#64748b' : '#334155'}; font-weight: ${isSelected ? '700' : 'normal'};" onclick="filterAuditTrailDay('NO_DAY')">⚙️ Other (${availableDaysMap[k]})</button>`;
+                            }
+                            return `<button class="btn" style="padding: 4px 10px; font-size: 11px; background: ${isSelected ? '#0c4a6e' : '#1e293b'}; color: ${isSelected ? '#7dd3fc' : '#cbd5e1'}; border: 1px solid ${isSelected ? '#0ea5e9' : '#334155'}; font-weight: ${isSelected ? '700' : 'normal'};" onclick="filterAuditTrailDay('${k}')">📅 Day ${k} (${availableDaysMap[k]})</button>`;
+                        }).join('')}
+                    </div>
+                    ${activeDayFilter !== 'ALL' ? `
+                    <button class="btn" style="padding: 3px 8px; font-size: 11px; background: transparent; color: #f87171; border: 1px solid #7f1d1d; border-radius: 4px;" onclick="filterAuditTrailDay('ALL')">✕ Clear Day Filter</button>
+                    ` : ''}
+                </div>
             </div>`;
 
             if (Object.keys(statusCounts).length > 0) {
-                html += `<div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;">
-                    ${Object.keys(statusCounts).map(k => `${statusPillHtml(k)} <span style="font-size: 11px; color: #9ca3af; margin-right: 6px;">× ${statusCounts[k]}</span>`).join('')}
+                html += `<div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; align-items: center;">
+                    <span style="font-size: 11px; color: #64748b; margin-right: 2px;">Status Breakdown:</span>
+                    ${Object.keys(statusCounts).map(k => `
+                        <span style="cursor: pointer; display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 6px; background: ${activeStatusFilter === k ? '#1e293b' : 'transparent'}; border: 1px solid ${activeStatusFilter === k ? '#60a5fa' : 'transparent'}; transition: all 0.15s;" onclick="filterAuditTrailStatus('${activeStatusFilter === k ? 'ALL' : k}')" title="Click to filter by ${k}">
+                            ${statusPillHtml(k)} <span style="font-size: 11px; color: #9ca3af;">× ${statusCounts[k]}</span>
+                        </span>
+                    `).join('')}
                 </div>`;
             }
 
             if (filteredLogs.length === 0) {
-                html += `<div style="padding: 12px; background: #0f172a; border: 1px solid #1e293b; border-radius: 6px; color: #9ca3af; font-size: 13px;">No task execution logs match the selected filter.</div>`;
+                const filterDetails = [];
+                if (activeStatusFilter !== 'ALL') filterDetails.push(`Status: <strong>${escapeHtml(activeStatusFilter)}</strong>`);
+                if (activeDayFilter !== 'ALL') filterDetails.push(`Day: <strong>${activeDayFilter === 'NO_DAY' ? 'General' : `Day ${activeDayFilter}`}</strong>`);
+                const filterMsg = filterDetails.length > 0 ? ` (${filterDetails.join(', ')})` : '';
+
+                html += `<div style="padding: 12px; background: #0f172a; border: 1px solid #1e293b; border-radius: 6px; color: #9ca3af; font-size: 13px; display: flex; align-items: center; justify-content: space-between;">
+                    <span>No task execution logs match the selected filter${filterMsg}.</span>
+                    <button class="btn" style="padding: 3px 8px; font-size: 11px; background: #3b82f6; color: #fff;" onclick="filterAuditTrailStatus('ALL'); filterAuditTrailDay('ALL'); filterAuditTrailLogs('ALL');">Reset All Filters</button>
+                </div>`;
             } else {
+                let lastRenderedDay = null;
                 filteredLogs.forEach((l, idx) => {
+                    const currentDay = (l.journey_day?.day_number !== undefined && l.journey_day?.day_number !== null) ? l.journey_day.day_number : 'NO_DAY';
+                    if (activeDayFilter === 'ALL' && sortedDayKeys.length > 1 && currentDay !== lastRenderedDay) {
+                        lastRenderedDay = currentDay;
+                        const dayTitle = l.journey_day?.title ? ` — ${escapeHtml(l.journey_day.title)}` : '';
+                        const dayCount = availableDaysMap[String(currentDay)] || '';
+                        html += `<div style="display: flex; align-items: center; justify-content: space-between; margin: 16px 0 8px 0; padding: 6px 12px; background: rgba(12, 74, 110, 0.35); border-left: 4px solid #0ea5e9; border-radius: 4px;">
+                            <span style="font-weight: 700; font-size: 12px; color: #7dd3fc;">
+                                ${currentDay === 'NO_DAY' ? '⚙️ GENERAL / ON-DEMAND TASKS' : `📅 DAY ${currentDay}${dayTitle.toUpperCase()}`}
+                            </span>
+                            <span style="font-size: 11px; color: #38bdf8; cursor: pointer; text-decoration: underline;" onclick="filterAuditTrailDay('${currentDay}')" title="Filter to this day only">
+                                ${dayCount ? `${dayCount} tasks • View Day ${currentDay} Only 🔍` : ''}
+                            </span>
+                        </div>`;
+                    }
                     let latencyTxt = 'N/A';
                     if (l.scheduled_at && l.executed_at) {
                         const diffSecs = Math.round((new Date(l.executed_at) - new Date(l.scheduled_at)) / 1000);
@@ -1681,7 +1979,7 @@
                     const pushCode = l.metadata?.push_template_code || l.journey_task?.push_template_code || null;
 
                     const dayNum = l.journey_day?.day_number;
-                    const dayBadge = (dayNum !== undefined && dayNum !== null) ? `<span class="status-pill-active" style="background: #0c4a6e; color: #7dd3fc; border: 1px solid #0ea5e9;">Day ${dayNum}</span>` : '';
+                    const dayBadge = (dayNum !== undefined && dayNum !== null) ? `<span class="status-pill-active" style="background: #0c4a6e; color: #7dd3fc; border: 1px solid #0ea5e9; cursor: pointer;" onclick="filterAuditTrailDay('${dayNum}')" title="Click to filter to Day ${dayNum} tasks">Day ${dayNum} 🔍</span>` : '';
                     const dayTitleText = l.journey_day?.title ? escapeHtml(l.journey_day.title) : '';
                     const wabaHeaderBadge = wabaCode ? '<span class="status-pill-active" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3);">💬 WABA</span>' : '';
                     const pushHeaderBadge = pushCode ? '<span class="status-pill-active" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(96, 165, 250, 0.3);">🔔 Push</span>' : '';
@@ -2316,31 +2614,7 @@
         let taskCounter = 0;
         let cachedOffers = [];
 
-        function addTaskRow(taskData = null) {
-            taskCounter++;
-            const container = document.getElementById('tasks-container');
-            const div = document.createElement('div');
-            div.className = 'task-row form-section';
-            div.id = `task-row-${taskCounter}`;
-
-            let offerOptions = '<option value="">-- Select Linked Offer (for GRANT_OFFER) --</option>';
-            cachedOffers.forEach(o => {
-                const selected = taskData?.offer_id === o.id ? 'selected' : '';
-                offerOptions += `<option value="${o.id}" ${selected}>${o.name} (${o.benefit_type} ₹${o.benefit_value}) — [${o.id.substring(0,8)}...]</option>`;
-            });
-
-            const titleVal = taskData?.title || `Task Nudge #${taskCounter}`;
-            const typeVal = taskData?.task_type || 'GRANT_OFFER';
-            const triggerVal = taskData?.trigger_event || 'IMMEDIATE';
-            const delayVal = taskData?.delay_minutes ?? 0;
-            const wabaVal = taskData?.waba_template_code || '';
-            const pushVal = taskData?.push_template_code || '';
-            const isIgConnectedVal = taskData?.conditions?.is_instagram_connected !== undefined ? String(taskData.conditions.is_instagram_connected) : '';
-            const isActiveVal = taskData?.is_active !== false ? 'true' : 'false';
-            const sortVal = taskData?.sort_order ?? taskCounter;
-            const revealModeVal = taskData?.conditions?.reveal_mode || 'MANUAL';
-            const startTimerGrantVal = taskData?.conditions?.start_timer_on_grant !== undefined ? String(taskData.conditions.start_timer_on_grant) : 'false';
-
+        function getPushTemplateSelectHtml(pushVal = '') {
             let pushTemplateCatalog = [];
 
             if (Array.isArray(cachedNotificationTemplates) && cachedNotificationTemplates.length > 0) {
@@ -2431,6 +2705,36 @@
             if (!matchedPushVal && pushVal) {
                 pushSelectHtml += `<option value="${escapeHtml(pushVal)}" selected>Custom: ${escapeHtml(pushVal)}</option>`;
             }
+
+            return pushSelectHtml;
+        }
+
+        function addTaskRow(taskData = null) {
+            taskCounter++;
+            const container = document.getElementById('tasks-container');
+            const div = document.createElement('div');
+            div.className = 'task-row form-section';
+            div.id = `task-row-${taskCounter}`;
+
+            let offerOptions = '<option value="">-- Select Linked Offer (for GRANT_OFFER) --</option>';
+            cachedOffers.forEach(o => {
+                const selected = taskData?.offer_id === o.id ? 'selected' : '';
+                offerOptions += `<option value="${o.id}" ${selected}>${o.name} (${o.benefit_type} ₹${o.benefit_value}) — [${o.id.substring(0,8)}...]</option>`;
+            });
+
+            const titleVal = taskData?.title || `Task Nudge #${taskCounter}`;
+            const typeVal = taskData?.task_type || 'GRANT_OFFER';
+            const triggerVal = taskData?.trigger_event || 'IMMEDIATE';
+            const delayVal = taskData?.delay_minutes ?? 0;
+            const wabaVal = taskData?.waba_template_code || '';
+            const pushVal = taskData?.push_template_code || '';
+            const isIgConnectedVal = taskData?.conditions?.is_instagram_connected !== undefined ? String(taskData.conditions.is_instagram_connected) : '';
+            const isActiveVal = taskData?.is_active !== false ? 'true' : 'false';
+            const sortVal = taskData?.sort_order ?? taskCounter;
+            const revealModeVal = taskData?.conditions?.reveal_mode || 'MANUAL';
+            const startTimerGrantVal = taskData?.conditions?.start_timer_on_grant !== undefined ? String(taskData.conditions.start_timer_on_grant) : 'false';
+
+            const pushSelectHtml = getPushTemplateSelectHtml(pushVal);
 
             div.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.15);">
@@ -2755,8 +3059,34 @@
         }
 
         // --- GRANULAR TASK JS HANDLERS ---
+        function closeStandaloneTaskEdit() {
+            const form = document.getElementById('standalone-task-edit-form');
+            if (form) form.style.display = 'none';
+        }
+
+        function populateEditTaskOffers(selectedOfferId = '') {
+            const select = document.getElementById('edit-task-offer');
+            if (!select) return;
+            select.innerHTML = '<option value="">-- No Offer Linked --</option>';
+            if (Array.isArray(cachedOffers) && cachedOffers.length > 0) {
+                cachedOffers.forEach(o => {
+                    const sel = (selectedOfferId === o.id) ? 'selected' : '';
+                    select.innerHTML += `<option value="${o.id}" ${sel}>${escapeHtml(o.name)} (${o.benefit_type} ₹${o.benefit_value}) — [${o.id.substring(0,8)}...]</option>`;
+                });
+            }
+        }
+
+        async function loadTaskForEdit(taskId) {
+            document.getElementById('task-target-id').value = taskId;
+            await getTaskById();
+            const form = document.getElementById('standalone-task-edit-form');
+            if (form) {
+                form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
         async function getTaskById() {
-            const id = document.getElementById('task-target-id').value;
+            const id = document.getElementById('task-target-id').value.trim();
             if(!id) return alert("Please enter a Task ID to fetch!");
 
             setResponse('day-response', { loading: true });
@@ -2764,22 +3094,103 @@
                 const res = await fetch(`${BASE_URL}/tasks/${id}`, { headers: HEADERS });
                 const data = await res.json();
                 setResponse('day-response', { status: res.status, data });
+
+                if (res.ok && data?.data) {
+                    const task = data.data;
+                    const formContainer = document.getElementById('standalone-task-edit-form');
+                    const badge = document.getElementById('edit-task-badge');
+                    if (badge) badge.innerText = `${task.id.substring(0, 8)}...`;
+
+                    // Pre-fill input values
+                    const titleEl = document.getElementById('edit-task-title');
+                    const typeEl = document.getElementById('edit-task-type');
+                    const triggerEl = document.getElementById('edit-task-trigger');
+                    const delayEl = document.getElementById('edit-task-delay');
+                    const wabaEl = document.getElementById('edit-task-waba');
+                    const pushEl = document.getElementById('edit-task-push');
+                    const condIgEl = document.getElementById('edit-task-cond-ig');
+                    const sortEl = document.getElementById('edit-task-sort');
+                    const revealModeEl = document.getElementById('edit-task-reveal-mode');
+                    const isActiveEl = document.getElementById('edit-task-is-active');
+
+                    if (titleEl) titleEl.value = task.title || '';
+                    if (typeEl) typeEl.value = task.task_type || 'GRANT_OFFER';
+                    if (triggerEl) triggerEl.value = task.trigger_event || 'IMMEDIATE';
+                    if (delayEl) delayEl.value = task.delay_minutes ?? 0;
+                    if (wabaEl) wabaEl.value = task.waba_template_code || '';
+                    if (sortEl) sortEl.value = task.sort_order ?? 0;
+                    if (isActiveEl) isActiveEl.value = task.is_active !== false ? 'true' : 'false';
+
+                    // Offer select
+                    populateEditTaskOffers(task.offer_id || '');
+
+                    // Push template select
+                    if (pushEl) pushEl.innerHTML = getPushTemplateSelectHtml(task.push_template_code || '');
+
+                    // Conditions
+                    const cond = task.conditions || {};
+                    if (condIgEl) condIgEl.value = cond.is_instagram_connected !== undefined ? String(cond.is_instagram_connected) : '';
+                    if (revealModeEl) revealModeEl.value = cond.reveal_mode || 'MANUAL';
+                    const startTimerEl = document.getElementById('edit-task-start-timer-grant');
+                    if (startTimerEl) startTimerEl.value = cond.start_timer_on_grant !== undefined ? String(cond.start_timer_on_grant) : 'false';
+
+                    if (formContainer) formContainer.style.display = 'block';
+                    showToast(`✅ Task ${task.id.substring(0, 8)}... loaded into form!`);
+                }
             } catch (err) {
                 setResponse('day-response', { error: err.message });
             }
         }
 
         async function updateTask() {
-            const id = document.getElementById('task-target-id').value;
+            const id = document.getElementById('task-target-id').value.trim();
             if(!id) return alert("Please enter a Task ID to update!");
+
+            const formContainer = document.getElementById('standalone-task-edit-form');
+            if (formContainer && formContainer.style.display === 'none') {
+                return getTaskById();
+            }
 
             setResponse('day-response', { loading: true });
             try {
-                const body = {
-                    title: "Updated Task Title",
-                    is_active: true
-                };
+                const body = {};
+                const title = document.getElementById('edit-task-title')?.value.trim();
+                if (title) body.title = title;
 
+                const taskType = document.getElementById('edit-task-type')?.value;
+                if (taskType) body.task_type = taskType;
+
+                const triggerEvent = document.getElementById('edit-task-trigger')?.value;
+                if (triggerEvent) body.trigger_event = triggerEvent;
+
+                const delayVal = document.getElementById('edit-task-delay')?.value;
+                if (delayVal !== '' && delayVal !== undefined) body.delay_minutes = parseInt(delayVal);
+
+                const offerVal = document.getElementById('edit-task-offer')?.value;
+                body.offer_id = offerVal || null;
+
+                const wabaVal = document.getElementById('edit-task-waba')?.value.trim();
+                body.waba_template_code = wabaVal || null;
+
+                const pushVal = document.getElementById('edit-task-push')?.value.trim();
+                body.push_template_code = pushVal || null;
+
+                const sortVal = document.getElementById('edit-task-sort')?.value;
+                if (sortVal !== '' && sortVal !== undefined) body.sort_order = parseInt(sortVal);
+
+                const isActiveVal = document.getElementById('edit-task-is-active')?.value;
+                if (isActiveVal !== '' && isActiveVal !== undefined) body.is_active = isActiveVal === 'true';
+
+                const condIgVal = document.getElementById('edit-task-cond-ig')?.value;
+                const revealModeVal = document.getElementById('edit-task-reveal-mode')?.value;
+                const startTimerVal = document.getElementById('edit-task-start-timer-grant')?.value;
+                const conditions = {};
+                if (condIgVal !== '') conditions.is_instagram_connected = condIgVal === 'true';
+                if (revealModeVal) conditions.reveal_mode = revealModeVal;
+                if (startTimerVal !== '' && startTimerVal !== undefined) conditions.start_timer_on_grant = startTimerVal === 'true';
+                if (Object.keys(conditions).length > 0) body.conditions = conditions;
+
+                console.log(`📡 Updating Task ${id} with body:`, body);
                 const res = await fetch(`${BASE_URL}/tasks/${id}`, {
                     method: 'PATCH',
                     headers: HEADERS,
@@ -2787,6 +3198,12 @@
                 });
                 const data = await res.json();
                 setResponse('day-response', { status: res.status, data });
+
+                if (res.ok) {
+                    showToast(`✅ Task ${id.substring(0, 8)}... successfully updated!`);
+                    const queryJourneyId = document.getElementById('day-query-journey-id')?.value;
+                    if (queryJourneyId) getAllJourneyDays();
+                }
             } catch (err) {
                 setResponse('day-response', { error: err.message });
             }
@@ -3130,16 +3547,42 @@
                 document.getElementById('enrolment-query-journey-id'),
                 document.getElementById('audit-query-journey-id')
             ];
+            const badge = document.getElementById('api-status-badge');
             try {
+                console.log(`📡 Fetching journeys from: ${BASE_URL}/journeys?limit=100`);
                 const res = await fetch(`${BASE_URL}/journeys?limit=100`, { headers: HEADERS });
+                
+                if (!res.ok) {
+                    const errText = await res.text();
+                    console.error(`HTTP ${res.status} error from ${BASE_URL}/journeys:`, errText);
+                    if (badge) {
+                        badge.style.background = '#7f1d1d';
+                        badge.style.color = '#fca5a5';
+                        badge.innerText = `🔴 HTTP ${res.status}`;
+                    }
+                    selects.forEach(select => {
+                        if (!select) return;
+                        select.innerHTML = `<option value="">⚠️ HTTP ${res.status} error. Click Refresh.</option>`;
+                    });
+                    return;
+                }
+
                 const data = await res.json();
                 const journeys = (data && data.data) ? data.data : (Array.isArray(data) ? data : []);
+                console.log(`✅ Received ${journeys.length} journeys from API:`, journeys);
                 
+                if (badge) {
+                    badge.style.background = '#14532d';
+                    badge.style.color = '#bbf7d0';
+                    badge.innerText = `🟢 Connected (${journeys.length} journeys)`;
+                }
+
                 selects.forEach(select => {
-                    if(!select) return;
+                    if (!select) return;
+                    const prevVal = select.value;
                     select.innerHTML = '<option value="">-- Select Subscription Journey --</option>';
-                    if(journeys.length === 0) {
-                        select.innerHTML += '<option value="" disabled>No journeys found. Create a journey first!</option>';
+                    if (journeys.length === 0) {
+                        select.innerHTML += '<option value="" disabled>No journeys found in DB. Create a journey first!</option>';
                     } else {
                         journeys.forEach(j => {
                             const opt = document.createElement('option');
@@ -3147,10 +3590,22 @@
                             opt.textContent = `${j.name} (Priority: ${j.priority}, v${j.version_number}) — [${j.id.substring(0,8)}...]`;
                             select.appendChild(opt);
                         });
+                        if (prevVal && journeys.some(j => j.id === prevVal)) {
+                            select.value = prevVal;
+                        }
                     }
                 });
             } catch (err) {
                 console.error('Failed to load journeys dropdown:', err);
+                if (badge) {
+                    badge.style.background = '#7f1d1d';
+                    badge.style.color = '#fca5a5';
+                    badge.innerText = `🔴 Network Error`;
+                }
+                selects.forEach(select => {
+                    if (!select) return;
+                    select.innerHTML = `<option value="">⚠️ Network Error (${err.message}). Click Refresh or switch to Localhost.</option>`;
+                });
             }
         }
 
@@ -3205,10 +3660,10 @@
         }
 
         window.addEventListener('DOMContentLoaded', () => {
+            const baseInput = document.getElementById('config-base-url');
+            if (baseInput) baseInput.value = BASE_URL;
             initDefaultCreatorIds();
-            loadPlansDropdown();
-            loadJourneysDropdown();
-            loadOffersDropdown();
+            reloadAllTesterData();
             toggleFixedRangeInputs();
             togglePlanDurationDaysVisibility();
         });
