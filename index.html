@@ -656,25 +656,28 @@
                         <div class="grid">
                             <div>
                                 <label>Has Expired Subscription?</label>
-                                <select id="journey-target-expired-sub">
+                                <select id="journey-target-expired-sub" onchange="togglePlanDurationDaysVisibility()">
                                     <option value="">None (Optional)</option>
                                     <option value="true">True</option>
                                     <option value="false">False</option>
                                 </select>
                             </div>
+                            <div>
+                                <label>Active Within Days</label>
+                                <input type="number" id="journey-target-active-days" placeholder="e.g. 3">
+                            </div>
                         </div>
 
-                        <div class="grid">
+                        <div class="grid" id="journey-plan-duration-container" style="display: none; background: rgba(15, 23, 42, 0.8); padding: 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid var(--card-border);">
                             <div>
-                                <label>Plan Duration Days (Min & Max)</label>
+                                <label style="display: flex; align-items: center; gap: 6px;">
+                                    <span>Plan Duration Days (Min & Max)</span>
+                                    <span style="font-size: 11px; color: #a5b4fc; font-weight: normal;">(Applies to Expired Subscription)</span>
+                                </label>
                                 <div style="display: flex; gap: 5px;">
                                     <input type="number" id="journey-target-plan-min" placeholder="Min (e.g. 28)">
                                     <input type="number" id="journey-target-plan-max" placeholder="Max (e.g. 30)">
                                 </div>
-                            </div>
-                            <div>
-                                <label>Active Within Days</label>
-                                <input type="number" id="journey-target-active-days" placeholder="e.g. 3">
                             </div>
                         </div>
 
@@ -1583,8 +1586,8 @@
                 const hasDayB = dayB !== undefined && dayB !== null;
                 if (hasDayA && hasDayB && dayA !== dayB) return dayA - dayB;
                 if (hasDayA !== hasDayB) return hasDayA ? -1 : 1;
-                const timeA = new Date(a.scheduled_at || a.executed_at || 0).getTime();
-                const timeB = new Date(b.scheduled_at || b.executed_at || 0).getTime();
+                const timeA = new Date(a.created_at || a.scheduled_at || a.executed_at || 0).getTime();
+                const timeB = new Date(b.created_at || b.scheduled_at || b.executed_at || 0).getTime();
                 return timeA - timeB;
             });
 
@@ -1728,6 +1731,7 @@
                             ${(offerId || userOfferId) ? detailRow('Offer Linked', `<span style="color: #f59e0b; font-weight: 600;">🏷️ ${escapeHtml(offerId || 'N/A')}</span>${userOfferId ? ` <span style="font-size: 11px; color: #fbbf24;">(UserOffer: ${escapeHtml(userOfferId)})</span>` : ''}`) : ''}
                             ${l.enrolment_id ? detailRow('Enrolment ID (Active)', `<span style="color: #a5b4fc; font-family: monospace; font-size: 11px;">${escapeHtml(l.enrolment_id)}</span>`) : ''}
                             ${l.history_id ? detailRow('History ID (Archived)', `<span style="color: #9ca3af; font-family: monospace; font-size: 11px;">${escapeHtml(l.history_id)}</span>`) : ''}
+                            ${l.created_at ? detailRow('Created At', fmtDateTime(l.created_at), 'font-size: 11px;') : ''}
                             ${detailRow('Scheduled At', fmtDateTime(l.scheduled_at), 'font-size: 11px;')}
                             ${detailRow('Executed At', l.executed_at ? fmtDateTime(l.executed_at) : '⏳ Pending', 'font-size: 11px;')}
                             ${detailRow('Execution Latency', latencyTxt)}
@@ -2118,8 +2122,10 @@
             if (regMin !== '') criteria.registered_days_min = parseInt(regMin);
             if (regMax !== '') criteria.registered_days_max = parseInt(regMax);
             if (expiredSubVal !== '') criteria.has_expired_subscription = expiredSubVal === 'true';
-            if (planMin !== '') criteria.min_plan_duration_days = parseInt(planMin);
-            if (planMax !== '') criteria.max_plan_duration_days = parseInt(planMax);
+            if (expiredSubVal === 'true') {
+                if (planMin !== '') criteria.min_plan_duration_days = parseInt(planMin);
+                if (planMax !== '') criteria.max_plan_duration_days = parseInt(planMax);
+            }
             if (activeDays !== '') criteria.active_within_days = parseInt(activeDays);
 
             return Object.keys(criteria).length > 0 ? criteria : undefined;
@@ -2214,6 +2220,7 @@
                         if (planMinEl) planMinEl.value = tc.min_plan_duration_days !== undefined ? tc.min_plan_duration_days : '';
                         if (planMaxEl) planMaxEl.value = tc.max_plan_duration_days !== undefined ? tc.max_plan_duration_days : '';
                         if (activeDaysEl) activeDaysEl.value = tc.active_within_days !== undefined ? tc.active_within_days : '';
+                        if (typeof togglePlanDurationDaysVisibility === 'function') togglePlanDurationDaysVisibility();
                     }
                 }
             } catch (err) {
@@ -3168,6 +3175,21 @@
             }
         }
 
+        function togglePlanDurationDaysVisibility() {
+            const val = document.getElementById('journey-target-expired-sub')?.value;
+            const container = document.getElementById('journey-plan-duration-container');
+            if (!container) return;
+            if (val === 'true') {
+                container.style.display = 'grid';
+            } else {
+                container.style.display = 'none';
+                const minEl = document.getElementById('journey-target-plan-min');
+                const maxEl = document.getElementById('journey-target-plan-max');
+                if (minEl) minEl.value = '';
+                if (maxEl) maxEl.value = '';
+            }
+        }
+
         function initDefaultCreatorIds() {
             const creatorInputIds = [
                 'manual-creator-id',
@@ -3188,6 +3210,7 @@
             loadJourneysDropdown();
             loadOffersDropdown();
             toggleFixedRangeInputs();
+            togglePlanDurationDaysVisibility();
         });
     </script>
 </body>
