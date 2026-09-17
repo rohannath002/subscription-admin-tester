@@ -297,6 +297,8 @@
 
         .status-pill-active { background: #064e3b; color: #6ee7b7; border: 1px solid #047857; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
         .status-pill-paused { background: #78350f; color: #fde68a; border: 1px solid #b45309; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .status-pill-pending { background: #78350f; color: #fde68a; border: 1px solid #d97706; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .status-pill-skipped { background: #3b0764; color: #d8b4fe; border: 1px solid #9333ea; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
         .status-pill-completed { background: #1e3a8a; color: #93c5fd; border: 1px solid #1d4ed8; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
         .status-pill-cancelled { background: #7f1d1d; color: #fca5a5; border: 1px solid #b91c1c; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
         .status-pill-default { background: #374151; color: #d1d5db; border: 1px solid #4b5563; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
@@ -869,6 +871,12 @@
                             <option value="true">True (Transfer and archive active enrolment)</option>
                         </select>
 
+                        <label>Force Run All Tasks (Admin Testing Override)</label>
+                        <select id="manual-force-run-all-tasks">
+                            <option value="false">False (Deduplicate; skip if already executed)</option>
+                            <option value="true">True (Force re-schedule all Day 0 tasks fresh)</option>
+                        </select>
+
                         <button class="btn" style="margin-top: 10px; background: #3b82f6;" onclick="manualEnrollCreator()">Manually Enroll / Transfer Creator</button>
                     </div>
 
@@ -942,10 +950,11 @@
                             <option value="false">False (Backdate enrolled_at only, await 15-min cron)</option>
                         </select>
 
-                        <label>Expire Previous Offers?</label>
-                        <select id="advance-expire-offers">
-                            <option value="false">False (Keep valid multi-day offers active)</option>
-                            <option value="true">True (Force expire previous active/pending offers)</option>
+
+                        <label>Force Run All Tasks (Admin Testing Override)</label>
+                        <select id="advance-force-run-all-tasks">
+                            <option value="false">False (Deduplicate; skip if already executed)</option>
+                            <option value="true">True (Force re-schedule all day tasks fresh)</option>
                         </select>
 
                         <button class="btn" style="margin-top: 10px; background: #6366f1; width: 100%;" onclick="advanceCreatorDay()">⚡ Advance Journey Day</button>
@@ -983,7 +992,7 @@
         const BASE_URL = 'https://movie-repeated-sandstone.ngrok-free.dev/api/v1/admin/subscription-journey';
         const DEFAULT_ADMIN_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InJvaGFuQGluZmx1aXNoLmNvbSIsImlkIjoiYWQwNTAwMWUtYTZlYi00ZjhlLTliNmYtYjgxOTJkMDhhOGU5IiwiaWF0IjoxNzg4NzcyMDI4fQ.th31Nih-WIR1XnhIYaFMoDoLAmofNuYKHLsPZbxwKd0';
         const DEFAULT_CREATOR_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwaG9uZU51bWJlciI6Iis5MTc4Nzg2NjE0NTEiLCJ1c2VySWQiOiJkYjEwNThiZi1iNTc1LTQzZjEtODk1Ni1lODk5OGI5NmI0OGMiLCJ1c2VyVHlwZSI6ImluZmx1ZW5jZXIiLCJqdGkiOiI2YjdkMDg2Yi1hMGQxLTRjZDMtYmVlZi1kYWE3OTA4NTg1YWUiLCJpYXQiOjE3ODg3NjMwOTR9.yt_PNbXKW5E5mLLtTY2e0AhsJCJ7Oua6_vfU7Sa9_cQ';
-        const DEFAULT_CREATOR_ID = 'f485bf3e-4b7b-4d0d-a15d-504d1e151bed';
+        const DEFAULT_CREATOR_ID = '47246da6-f41b-410a-8349-4600eb0cc466';
         const HEADERS = {
             'Content-Type': 'application/json',
             'ngrok-skip-browser-warning': 'true',
@@ -1203,6 +1212,14 @@
                 idCopyButtons += `<span class="item-id-pill" style="background: #14532d; color: #bbf7d0; border-color: #15803d;" onclick="copyAndFill('${escapeHtml(item.influencer_id)}', 'update-enrolment-id', 'Influencer ID')" title="Click to copy Creator ID">👤 ${escapeHtml(item.influencer_id.substring(0, 10))}... 📋</span>`;
             }
 
+            if (item.enrolment_id) {
+                idCopyButtons += `<span class="item-id-pill" style="background: #1e1b4b; color: #a5b4fc; border-color: #6366f1;" onclick="copyAndFill('${escapeHtml(item.enrolment_id)}', 'update-enrolment-id', 'Enrolment ID')" title="Click to copy Enrolment ID">🎯 Enrol: ${escapeHtml(item.enrolment_id.substring(0, 8))}... 📋</span>`;
+            }
+
+            if (item.history_id) {
+                idCopyButtons += `<span class="item-id-pill" style="background: #1f2937; color: #9ca3af; border-color: #374151;" onclick="copyAndFill('${escapeHtml(item.history_id)}', '', 'History ID')" title="Click to copy History ID">📜 Hist: ${escapeHtml(item.history_id.substring(0, 8))}... 📋</span>`;
+            }
+
             let detailsHtml = '';
 
             if (isPlan) {
@@ -1257,6 +1274,12 @@
                     <div class="detail-item"><span class="detail-label">Enrolled At</span><span class="detail-value" style="font-size: 11px;">${item.enrolled_at ? new Date(item.enrolled_at).toLocaleString() : 'N/A'}</span></div>
                     <div class="detail-item"><span class="detail-label">Journey</span><span class="detail-value">${item.journey?.name ? escapeHtml(item.journey.name) : (item.journey_id ? item.journey_id.substring(0, 8) + '...' : 'N/A')}</span></div>
                 `;
+                if (item.id) {
+                    detailsHtml += `<div class="detail-item"><span class="detail-label">Enrolment ID</span><span class="detail-value" style="color: #a5b4fc; font-family: monospace; font-size: 11px;">${escapeHtml(item.id)}</span></div>`;
+                }
+                if (item.base_subscription_history_id) {
+                    detailsHtml += `<div class="detail-item"><span class="detail-label">Base Sub History</span><span class="detail-value" style="color: #fbbf24; font-family: monospace; font-size: 11px;">${escapeHtml(item.base_subscription_history_id)}</span></div>`;
+                }
             } else if (isTaskLog) {
                 detailsHtml += `
                     <div class="detail-item"><span class="detail-label">Task Type</span><span class="detail-value" style="color: #c084fc; font-weight: 700;">${item.task_type}</span></div>
@@ -1264,6 +1287,12 @@
                     <div class="detail-item"><span class="detail-label">Scheduled</span><span class="detail-value" style="font-size: 11px;">${item.scheduled_at ? new Date(item.scheduled_at).toLocaleString() : 'N/A'}</span></div>
                     <div class="detail-item"><span class="detail-label">Executed</span><span class="detail-value" style="font-size: 11px;">${item.executed_at ? new Date(item.executed_at).toLocaleString() : 'Pending'}</span></div>
                 `;
+                if (item.enrolment_id) {
+                    detailsHtml += `<div class="detail-item"><span class="detail-label">Enrolment ID</span><span class="detail-value" style="color: #a5b4fc; font-family: monospace; font-size: 11px;">${escapeHtml(item.enrolment_id)}</span></div>`;
+                }
+                if (item.history_id) {
+                    detailsHtml += `<div class="detail-item"><span class="detail-label">History ID</span><span class="detail-value" style="color: #9ca3af; font-family: monospace; font-size: 11px;">${escapeHtml(item.history_id)}</span></div>`;
+                }
             } else {
                 Object.keys(item).slice(0, 6).forEach(k => {
                     if (k !== 'id' && k !== 'name' && k !== 'title' && typeof item[k] !== 'object') {
@@ -1347,7 +1376,8 @@
             if (statusVal === 'COMPLETED' || statusVal === 'EXECUTED' || statusVal === 'SENT' || statusVal === 'SUCCESS') {
                 return `<span class="status-pill-completed">${escapeHtml(statusVal)}</span>`;
             }
-            if (statusVal === 'PENDING' || statusVal === 'SKIPPED') return `<span class="status-pill-paused">${escapeHtml(statusVal)}</span>`;
+            if (statusVal === 'PENDING') return `<span class="status-pill-pending">${escapeHtml(statusVal)}</span>`;
+            if (statusVal === 'SKIPPED') return `<span class="status-pill-skipped">${escapeHtml(statusVal)}</span>`;
             if (statusVal.includes('CANCEL') || statusVal.includes('KILL') || statusVal.includes('FAIL')) {
                 return `<span class="status-pill-cancelled">${escapeHtml(statusVal)}</span>`;
             }
@@ -1386,7 +1416,25 @@
         }
 
         // --- FULL AUDIT TRAIL TRAJECTORY RENDERER (GET /audit-trail?influencer_id=...) ---
+        window.currentAuditTrailData = null;
+        window.currentAuditTrailFilter = 'ALL';
+
+        function filterAuditTrailLogs(filterType, scrollIntoView) {
+            window.currentAuditTrailFilter = filterType;
+            const container = document.getElementById('audit-trail-task-logs-container');
+            if (container && window.currentAuditTrailData) {
+                renderAuditTrailTaskLogsContainer(container, window.currentAuditTrailData, window.currentAuditTrailFilter);
+                if (scrollIntoView) {
+                    container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }
+        }
+        window.filterAuditTrailLogs = filterAuditTrailLogs;
+
         function renderAuditTrailView(container, d) {
+            window.currentAuditTrailData = d;
+            window.currentAuditTrailFilter = d.active_enrolment ? 'ACTIVE' : 'ALL';
+
             const creator = d.creator || {};
             const enrolment = d.active_enrolment;
             const history = Array.isArray(d.journey_history) ? d.journey_history : [];
@@ -1430,17 +1478,21 @@
                             <span>🚀</span>
                             <span>${escapeHtml(j.name || 'Journey')}</span>
                             ${statusPillHtml(enrolment.status)}
+                            <span class="status-pill-active" style="background: #1e1b4b; color: #a5b4fc; border: 1px solid #6366f1;">🎯 Active Enrolment</span>
                         </div>
                         <div style="display: flex; gap: 6px; align-items: center;">
-                            ${idPill(enrolment.id, 'update-enrolment-id', 'Enrolment ID')}
+                            ${idPill(enrolment.id, 'update-enrolment-id', 'Enrolment ID', 'background: #1e1b4b; color: #a5b4fc; border-color: #6366f1;')}
                             ${idPill(enrolment.journey_id, 'journey-target-id', 'Journey ID')}
+                            <button class="btn" style="padding: 2px 8px; font-size: 11px; background: #4f46e5; color: #fff; margin-left: 4px;" onclick="filterAuditTrailLogs('ACTIVE', true)">🎯 Filter Active Tasks</button>
                         </div>
                     </div>
                     <div class="item-details-grid">
+                        ${detailRow('Enrolment ID', escapeHtml(enrolment.id || 'N/A'), 'color: #a5b4fc; font-family: monospace; font-size: 11px; font-weight: 600;')}
                         ${detailRow('Current Day', `Day ${enrolment.current_day_number}`, 'color: #38bdf8; font-weight: 700;')}
                         ${detailRow('Loop Count', String(enrolment.loop_count ?? 0))}
                         ${detailRow('Journey Priority', `P${j.priority !== undefined ? j.priority : '—'}`, 'color: #818cf8; font-weight: 700;')}
                         ${detailRow('Journey Version', `v${j.version_number || 1}`)}
+                        ${enrolment.base_subscription_history_id ? detailRow('Base Sub History ID', escapeHtml(enrolment.base_subscription_history_id), 'font-size: 11px; color: #fbbf24; font-family: monospace;') : ''}
                         ${detailRow('Enrolled At', fmtDateTime(enrolment.enrolled_at), 'font-size: 11px;')}
                         ${detailRow('Last Evaluated', fmtDateTime(enrolment.last_evaluated_at), 'font-size: 11px;')}
                     </div>
@@ -1459,45 +1511,120 @@
                         const mins = Math.round((new Date(h.ended_at) - new Date(h.started_at)) / 60000);
                         durationTxt = mins >= 1440 ? `${(mins / 1440).toFixed(1)} days` : (mins >= 60 ? `${(mins / 60).toFixed(1)} hrs` : `${mins} mins`);
                     }
-                    html += `<div class="item-card">
+                    html += `<div class="item-card" style="border-left: 3px solid #475569;">
                         <div class="item-card-header">
                             <div class="item-title">
                                 <span>#${idx + 1}</span>
                                 <span>${escapeHtml(j.name || 'Journey')} (v${j.version_number || 1})</span>
                                 ${statusPillHtml(h.exit_reason)}
+                                <span class="status-pill-inactive" style="background: #1f2937; color: #9ca3af; border: 1px solid #374151;">📜 Episode #${history.length - idx}</span>
                             </div>
                             <div style="display: flex; gap: 6px; align-items: center;">
+                                ${idPill(h.id, '', 'History ID', 'background: #1f2937; color: #9ca3af; border-color: #374151;')}
                                 ${idPill(h.journey_id, 'journey-target-id', 'Journey ID')}
+                                <button class="btn" style="padding: 2px 8px; font-size: 11px; background: #374151; color: #e2e8f0; margin-left: 4px;" onclick="filterAuditTrailLogs('${h.id}', true)">📜 Filter Episode Tasks</button>
                             </div>
                         </div>
                         <div class="item-details-grid">
+                            ${detailRow('History ID', escapeHtml(h.id || 'N/A'), 'color: #9ca3af; font-family: monospace; font-size: 11px; font-weight: 600;')}
                             ${detailRow('Exit Reason', escapeHtml(h.exit_reason || 'N/A'), 'color: #f87171; font-weight: 700;')}
                             ${detailRow('Final Day Reached', `Day ${h.final_day_number}`, 'color: #38bdf8; font-weight: 700;')}
+                            ${detailRow('Loop Count', String(h.loop_count ?? 0))}
                             ${detailRow('Started At', fmtDateTime(h.started_at), 'font-size: 11px;')}
                             ${detailRow('Ended At', fmtDateTime(h.ended_at), 'font-size: 11px;')}
                             ${detailRow('Time In Journey', durationTxt)}
-                            ${detailRow('History ID', escapeHtml(h.id ? h.id.substring(0, 13) + '...' : 'N/A'), 'font-size: 11px;')}
                         </div>
                     </div>`;
                 });
             }
 
-            // 4. TASK EXECUTION LOGS
+            // 4. TASK EXECUTION LOGS CONTAINER
+            html += `<div id="audit-trail-task-logs-container"></div>`;
+
+            container.innerHTML = html;
+
+            renderAuditTrailTaskLogsContainer(document.getElementById('audit-trail-task-logs-container'), d, window.currentAuditTrailFilter);
+        }
+
+
+
+        function renderAuditTrailTaskLogsContainer(container, d, activeFilter) {
+            const enrolment = d.active_enrolment;
+            const history = Array.isArray(d.journey_history) ? d.journey_history : [];
+            const logs = Array.isArray(d.task_execution_logs) ? d.task_execution_logs : [];
+
+            const isLogActiveRun = (l) => {
+                if (l.enrolment_id) return true;
+                if (l.history_id) return false;
+                if (enrolment && enrolment.enrolled_at) {
+                    const enrolledTime = new Date(enrolment.enrolled_at).getTime();
+                    const logTime = new Date(l.executed_at || l.scheduled_at).getTime();
+                    return logTime >= enrolledTime;
+                }
+                return false;
+            };
+
+            const activeLogsCount = logs.filter(isLogActiveRun).length;
+            const pastLogsCount = logs.length - activeLogsCount;
+
+            let filteredLogs = logs;
+            if (activeFilter === 'ACTIVE') {
+                filteredLogs = logs.filter(isLogActiveRun);
+            } else if (activeFilter === 'PAST') {
+                filteredLogs = logs.filter(l => !isLogActiveRun(l));
+            } else if (activeFilter !== 'ALL') {
+                filteredLogs = logs.filter(l => l.history_id === activeFilter);
+            }
+
+            filteredLogs = [...filteredLogs].sort((a, b) => {
+                const dayA = a.journey_day?.day_number;
+                const dayB = b.journey_day?.day_number;
+                const hasDayA = dayA !== undefined && dayA !== null;
+                const hasDayB = dayB !== undefined && dayB !== null;
+                if (hasDayA && hasDayB && dayA !== dayB) return dayA - dayB;
+                if (hasDayA !== hasDayB) return hasDayA ? -1 : 1;
+                const timeA = new Date(a.scheduled_at || a.executed_at || 0).getTime();
+                const timeB = new Date(b.scheduled_at || b.executed_at || 0).getTime();
+                return timeA - timeB;
+            });
+
             const statusCounts = {};
-            logs.forEach(l => {
+            filteredLogs.forEach(l => {
                 const k = String(l.status || 'UNKNOWN').toUpperCase();
                 statusCounts[k] = (statusCounts[k] || 0) + 1;
             });
-            html += auditSectionHeader('⚡ Task Execution Logs (last 50, newest first)', logs.length);
+
+            let html = auditSectionHeader(`⚡ Task Execution Logs (${filteredLogs.length} of ${logs.length} shown, day-wise: Day 0, 1, 2...)`, filteredLogs.length);
+
+            // Filter Control Toolbar
+            html += `<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; padding: 10px 12px; background: #0b1329; border: 1px solid #1e293b; border-radius: 8px;">
+                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                    <span style="font-size: 12px; font-weight: 700; color: #94a3b8;">Filter Trajectory Run:</span>
+                    <button class="btn" style="padding: 4px 10px; font-size: 11px; background: ${activeFilter === 'ALL' ? '#3b82f6' : '#1e293b'}; color: #fff; border: 1px solid ${activeFilter === 'ALL' ? '#60a5fa' : '#334155'};" onclick="filterAuditTrailLogs('ALL')">All Logs (${logs.length})</button>
+                    ${enrolment ? `<button class="btn" style="padding: 4px 10px; font-size: 11px; background: ${activeFilter === 'ACTIVE' ? '#4f46e5' : '#1e293b'}; color: #a5b4fc; border: 1px solid ${activeFilter === 'ACTIVE' ? '#818cf8' : '#334155'};" onclick="filterAuditTrailLogs('ACTIVE')">🎯 Active Run (${activeLogsCount})</button>` : ''}
+                    ${history.length > 0 ? `<button class="btn" style="padding: 4px 10px; font-size: 11px; background: ${activeFilter === 'PAST' ? '#475569' : '#1e293b'}; color: #9ca3af; border: 1px solid ${activeFilter === 'PAST' ? '#94a3b8' : '#334155'};" onclick="filterAuditTrailLogs('PAST')">📜 Past Runs (${pastLogsCount})</button>` : ''}
+                </div>
+                ${history.length > 0 ? `
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 11px; color: #94a3b8;">Specific Episode:</span>
+                    <select style="padding: 4px 8px; font-size: 11px; background: #1e293b; color: #cbd5e1; border: 1px solid #334155; border-radius: 4px;" onchange="filterAuditTrailLogs(this.value)">
+                        <option value="ALL" ${activeFilter === 'ALL' ? 'selected' : ''}>-- All Runs (${logs.length}) --</option>
+                        ${enrolment ? `<option value="ACTIVE" ${activeFilter === 'ACTIVE' ? 'selected' : ''}>🎯 Active Enrolment (${activeLogsCount})</option>` : ''}
+                        ${history.map((h, i) => `<option value="${h.id}" ${activeFilter === h.id ? 'selected' : ''}>📜 Episode #${history.length - i}: Day ${h.final_day_number} (${h.exit_reason})</option>`).join('')}
+                    </select>
+                </div>` : ''}
+            </div>`;
+
             if (Object.keys(statusCounts).length > 0) {
                 html += `<div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;">
                     ${Object.keys(statusCounts).map(k => `${statusPillHtml(k)} <span style="font-size: 11px; color: #9ca3af; margin-right: 6px;">× ${statusCounts[k]}</span>`).join('')}
                 </div>`;
             }
-            if (logs.length === 0) {
-                html += `<div style="padding: 10px; background: #0f172a; border: 1px solid #1e293b; border-radius: 6px; color: #9ca3af; font-size: 13px;">No task executions logged for this creator.</div>`;
+
+            if (filteredLogs.length === 0) {
+                html += `<div style="padding: 12px; background: #0f172a; border: 1px solid #1e293b; border-radius: 6px; color: #9ca3af; font-size: 13px;">No task execution logs match the selected filter.</div>`;
             } else {
-                logs.forEach((l, idx) => {
+                filteredLogs.forEach((l, idx) => {
                     let latencyTxt = 'N/A';
                     if (l.scheduled_at && l.executed_at) {
                         const diffSecs = Math.round((new Date(l.executed_at) - new Date(l.scheduled_at)) / 1000);
@@ -1512,33 +1639,65 @@
                     }
 
                     let enrolmentRunBadge = '';
-                    let isCurrentRun = false;
-                    if (enrolment && enrolment.enrolled_at) {
-                        const enrolledTime = new Date(enrolment.enrolled_at).getTime();
-                        if (l.executed_at) {
-                            isCurrentRun = new Date(l.executed_at).getTime() >= enrolledTime;
-                        } else if (l.status === 'PENDING' && l.scheduled_at) {
-                            isCurrentRun = new Date(l.scheduled_at).getTime() >= enrolledTime;
+                    let runPill = '';
+                    if (l.enrolment_id) {
+                        enrolmentRunBadge = '<span class="status-pill-active" style="background: #1e1b4b; color: #a5b4fc; border: 1px solid #6366f1;">🎯 Active Enrolment Run</span>';
+                        runPill = idPill(l.enrolment_id, 'update-enrolment-id', 'Enrolment ID', 'background: #1e1b4b; color: #a5b4fc; border-color: #6366f1;');
+                    } else if (l.history_id) {
+                        let epNum = '';
+                        if (history && history.length > 0) {
+                            const hIdx = history.findIndex(h => h.id === l.history_id);
+                            if (hIdx !== -1) {
+                                epNum = ` (Episode #${history.length - hIdx})`;
+                            }
+                        }
+                        enrolmentRunBadge = `<span class="status-pill-inactive" style="background: #1f2937; color: #9ca3af; border: 1px solid #374151;">📜 Past Run${epNum}</span>`;
+                        runPill = idPill(l.history_id, '', 'History ID', 'background: #1f2937; color: #9ca3af; border-color: #374151;');
+                    } else {
+                        const isCurrent = isLogActiveRun(l);
+                        if (isCurrent) {
+                            enrolmentRunBadge = '<span class="status-pill-active" style="background: #1e1b4b; color: #a5b4fc; border: 1px solid #6366f1;">🎯 Active Enrolment Run</span>';
+                        } else {
+                            let episodeLabel = '📜 Past Enrolment Run';
+                            if (history && history.length > 0) {
+                                const logTime = new Date(l.executed_at || l.scheduled_at).getTime();
+                                const matchedIdx = history.findIndex(h => {
+                                    const start = new Date(h.started_at).getTime();
+                                    const end = new Date(h.ended_at).getTime();
+                                    return logTime >= (start - 1000) && logTime <= (end + 1000);
+                                });
+                                if (matchedIdx !== -1) {
+                                    episodeLabel = `📜 Past Run (Episode #${history.length - matchedIdx})`;
+                                }
+                            }
+                            enrolmentRunBadge = `<span class="status-pill-inactive" style="background: #1f2937; color: #9ca3af; border: 1px solid #374151;">${escapeHtml(episodeLabel)}</span>`;
                         }
                     }
 
-                    if (isCurrentRun) {
-                        enrolmentRunBadge = '<span class="status-pill-active" style="background: #1e1b4b; color: #a5b4fc; border: 1px solid #6366f1;">🎯 Active Enrolment Run</span>';
-                    } else {
-                        enrolmentRunBadge = '<span class="status-pill-inactive" style="background: #1f2937; color: #9ca3af; border: 1px solid #374151;">📜 Past Enrolment Run</span>';
+                    const wabaCode = l.metadata?.waba_template_code || l.journey_task?.waba_template_code || null;
+                    const pushCode = l.metadata?.push_template_code || l.journey_task?.push_template_code || null;
+
+                    const dayNum = l.journey_day?.day_number;
+                    const dayBadge = (dayNum !== undefined && dayNum !== null) ? `<span class="status-pill-active" style="background: #0c4a6e; color: #7dd3fc; border: 1px solid #0ea5e9;">Day ${dayNum}</span>` : '';
+                    const dayTitleText = l.journey_day?.title ? escapeHtml(l.journey_day.title) : '';
+                    const wabaHeaderBadge = wabaCode ? '<span class="status-pill-active" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3);">💬 WABA</span>' : '';
+                    const pushHeaderBadge = pushCode ? '<span class="status-pill-active" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(96, 165, 250, 0.3);">🔔 Push</span>' : '';
+                    const selectedVariant = l.metadata?.selected_variant || null;
+                    const variantBadge = selectedVariant ? `<span class="status-pill-active" style="background: #3730a3; color: #c7d2fe; border: 1px solid #6366f1;">🎲 ${escapeHtml(selectedVariant)}</span>` : '';
+
+                    const reasonCode = l.skip_reason || l.metadata?.reason_code;
+                    const reasonDesc = l.metadata?.reason;
+                    let reasonDisplay = '—';
+                    if (reasonCode && reasonDesc && reasonDesc !== reasonCode) {
+                        reasonDisplay = `${escapeHtml(reasonCode)} <span style="font-size: 11px; color: #fca5a5; font-weight: normal;">(${escapeHtml(reasonDesc)})</span>`;
+                    } else if (reasonCode) {
+                        reasonDisplay = escapeHtml(reasonCode);
+                    } else if (reasonDesc) {
+                        reasonDisplay = escapeHtml(reasonDesc);
                     }
 
-                    let variantBadge = '';
-                    if (l.metadata && l.metadata.selected_variant) {
-                        variantBadge = `<span class="status-badge" style="background: #831843; color: #f472b6; border: 1px solid #9d174d;">🎲 Variant: ${escapeHtml(l.metadata.selected_variant)}</span>`;
-                    }
-
-                    let dayBadge = '';
-                    if (l.journey_day && l.journey_day.day_number !== undefined) {
-                        dayBadge = `<span class="status-badge" style="background: #065f46; color: #34d399; border: 1px solid #059669; font-weight: 700;">📅 Day ${l.journey_day.day_number}</span>`;
-                    }
-
-                    const dayTitleText = l.journey_day ? `Day ${l.journey_day.day_number}` : '';
+                    const offerId = l.metadata?.offer_id || l.journey_task?.offer_id;
+                    const userOfferId = l.metadata?.user_offer_id;
 
                     html += `<div class="item-card">
                         <div class="item-card-header">
@@ -1548,10 +1707,13 @@
                                 <span>${dayTitleText ? `${dayTitleText} — ` : ''}${escapeHtml(l.task_type || 'Task')}</span>
                                 ${statusPillHtml(l.status)}
                                 ${enrolmentRunBadge}
+                                ${wabaHeaderBadge}
+                                ${pushHeaderBadge}
                                 ${variantBadge}
                             </div>
                             <div style="display: flex; gap: 6px; align-items: center;">
                                 ${idPill(l.id, '', 'Task Log ID')}
+                                ${runPill}
                                 ${l.journey_task_id ? idPill(l.journey_task_id, 'task-target-id', 'Journey Task ID') : ''}
                             </div>
                         </div>
@@ -1559,7 +1721,13 @@
                             ${detailRow('Journey Day', l.journey_day ? `<strong style="color:#34d399;">Day ${l.journey_day.day_number}</strong> (${escapeHtml(l.journey_day.title || '')})` : (l.journey_day_id ? escapeHtml(l.journey_day_id.substring(0, 13)) + '...' : 'N/A'), 'color: #38bdf8;')}
                             ${detailRow('Task Type', escapeHtml(l.task_type || 'N/A'), 'color: #c084fc; font-weight: 700;')}
                             ${detailRow('Status', escapeHtml(String(l.status || 'N/A')))}
-                            ${detailRow('Skip Reason', escapeHtml(l.skip_reason || '—'), l.skip_reason ? 'color: #f87171; font-weight: 600;' : '')}
+                            ${detailRow('Skip / Cancel Reason', reasonDisplay, (reasonCode || reasonDesc) ? 'color: #f87171; font-weight: 600;' : '')}
+                            ${wabaCode ? detailRow('WABA Template', `<span style="color: #34d399; font-weight: 600;">💬 ${escapeHtml(wabaCode)}</span> ${l.metadata?.waba_sent === true ? '<span style="color: #34d399; font-size: 11px;">(Sent ✓)</span>' : (l.metadata?.waba_error ? `<span style="color: #f87171; font-size: 11px;">(Error: ${escapeHtml(l.metadata.waba_error)})</span>` : '<span style="color: #94a3b8; font-size: 11px;">(Configured)</span>')}`) : ''}
+                            ${pushCode ? detailRow('Push Template', `<span style="color: #60a5fa; font-weight: 600;">🔔 ${escapeHtml(pushCode)}</span> ${selectedVariant ? `<span style="color: #f472b6; font-size: 11px; font-weight: 600;">[${escapeHtml(selectedVariant)}]</span>` : ''} ${l.metadata?.push_sent === true ? '<span style="color: #34d399; font-size: 11px;">(Sent ✓)</span>' : (l.metadata?.push_error ? `<span style="color: #f87171; font-size: 11px;">(Error: ${escapeHtml(l.metadata.push_error)})</span>` : '<span style="color: #94a3b8; font-size: 11px;">(Configured)</span>')}`) : ''}
+                            ${l.metadata?.push_title ? detailRow('Push Message Copy', `<span style="color: #e2e8f0; font-weight: 600;">"${escapeHtml(l.metadata.push_title)}"</span>${l.metadata?.push_body ? `<br><span style="color: #94a3b8; font-size: 11px;">${escapeHtml(l.metadata.push_body)}</span>` : ''}`) : ''}
+                            ${(offerId || userOfferId) ? detailRow('Offer Linked', `<span style="color: #f59e0b; font-weight: 600;">🏷️ ${escapeHtml(offerId || 'N/A')}</span>${userOfferId ? ` <span style="font-size: 11px; color: #fbbf24;">(UserOffer: ${escapeHtml(userOfferId)})</span>` : ''}`) : ''}
+                            ${l.enrolment_id ? detailRow('Enrolment ID (Active)', `<span style="color: #a5b4fc; font-family: monospace; font-size: 11px;">${escapeHtml(l.enrolment_id)}</span>`) : ''}
+                            ${l.history_id ? detailRow('History ID (Archived)', `<span style="color: #9ca3af; font-family: monospace; font-size: 11px;">${escapeHtml(l.history_id)}</span>`) : ''}
                             ${detailRow('Scheduled At', fmtDateTime(l.scheduled_at), 'font-size: 11px;')}
                             ${detailRow('Executed At', l.executed_at ? fmtDateTime(l.executed_at) : '⏳ Pending', 'font-size: 11px;')}
                             ${detailRow('Execution Latency', latencyTxt)}
@@ -2668,7 +2836,8 @@
                 const body = {
                     influencer_id: influencerId,
                     journey_id: journeyId,
-                    override_existing: document.getElementById('manual-override-existing').value === 'true'
+                    override_existing: document.getElementById('manual-override-existing').value === 'true',
+                    force_run_all_tasks: document.getElementById('manual-force-run-all-tasks')?.value === 'true'
                 };
                 const res = await fetch(`${BASE_URL}/enrolments/enroll-manual`, {
                     method: 'POST',
@@ -2744,11 +2913,11 @@
 
             const targetDayVal = document.getElementById('advance-target-day').value;
             const runImmediately = document.getElementById('advance-run-immediately').value === 'true';
-            const expireOffers = document.getElementById('advance-expire-offers')?.value === 'true';
+            const forceRunAllTasks = document.getElementById('advance-force-run-all-tasks')?.value === 'true';
 
             const body = {
                 run_immediately: runImmediately,
-                expire_previous_offers: expireOffers
+                force_run_all_tasks: forceRunAllTasks
             };
             if (targetDayVal !== '') {
                 body.target_day_number = parseInt(targetDayVal);
