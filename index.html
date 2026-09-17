@@ -1665,84 +1665,114 @@
                 </div>
             </div>`;
 
-            // 2. ACTIVE ENROLMENT
-            html += auditSectionHeader('🎯 Active Journey Enrolment', enrolment ? 1 : 0);
-            if (!enrolment) {
-                html += `<div style="padding: 10px; background: #0f172a; border: 1px solid #1e293b; border-radius: 6px; color: #9ca3af; font-size: 13px;">Creator is not currently enrolled in any journey.</div>`;
-            } else {
-                const j = enrolment.journey || {};
-                html += `<div class="item-card" style="border-left: 3px solid #6366f1;">
-                    <div class="item-card-header">
-                        <div class="item-title">
-                            <span>🚀</span>
-                            <span>${escapeHtml(j.name || 'Journey')}</span>
-                            ${statusPillHtml(enrolment.status)}
-                            <span class="status-pill-active" style="background: #1e1b4b; color: #a5b4fc; border: 1px solid #6366f1;">🎯 Active Enrolment</span>
+            // 2 & 3. TWO-COLUMN SPLIT: Active Enrolment (Left) vs. Journey Exit History (Right)
+            const j = enrolment?.journey || {};
+            html += `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; margin-top: 14px; align-items: stretch;">
+                <!-- LEFT COLUMN: Active Journey Enrolment -->
+                <div style="display: flex; flex-direction: column; height: 100%;">
+                    <div class="list-header-bar" style="margin: 0 0 10px 0; background: #1e1b4b; border: 1px solid #4338ca; border-radius: 6px; padding: 8px 12px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 15px;">🎯</span>
+                            <span style="color: #c7d2fe; font-weight: 700; font-size: 13px;">Active Journey Enrolment</span>
                         </div>
-                        <div style="display: flex; gap: 6px; align-items: center;">
-                            ${idPill(enrolment.id, 'update-enrolment-id', 'Enrolment ID', 'background: #1e1b4b; color: #a5b4fc; border-color: #6366f1;')}
-                            ${idPill(enrolment.journey_id, 'journey-target-id', 'Journey ID')}
-                            <button class="btn" style="padding: 2px 8px; font-size: 11px; background: #4f46e5; color: #fff; margin-left: 4px;" onclick="filterAuditTrailLogs('ACTIVE', true)">🎯 Filter Active Tasks</button>
+                        <span style="font-size: 11px; font-weight: 600; background: ${enrolment ? '#312e81' : '#1e293b'}; color: ${enrolment ? '#a5b4fc' : '#94a3b8'}; padding: 2px 8px; border-radius: 12px; border: 1px solid ${enrolment ? '#6366f1' : '#334155'};">
+                            ${enrolment ? 'LIVE ENROLMENT' : 'NONE'}
+                        </span>
+                    </div>
+                    ${enrolment ? `
+                    <div class="item-card" style="border-left: 4px solid #6366f1; background: #0c1222; margin: 0; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+                        <div>
+                            <div class="item-card-header">
+                                <div class="item-title">
+                                    <span>🚀</span>
+                                    <span style="font-size: 14px; font-weight: 700; color: #f1f5f9;">${escapeHtml(j.name || 'Journey')}</span>
+                                    ${statusPillHtml(enrolment.status)}
+                                </div>
+                                <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                                    ${idPill(enrolment.id, 'update-enrolment-id', 'Enrolment ID', 'background: #1e1b4b; color: #a5b4fc; border-color: #6366f1;')}
+                                    ${idPill(enrolment.journey_id, 'journey-target-id', 'Journey ID')}
+                                </div>
+                            </div>
+                            <div class="item-details-grid" style="grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));">
+                                ${detailRow('Enrolment ID', escapeHtml(enrolment.id || 'N/A'), 'color: #a5b4fc; font-family: monospace; font-size: 11px; font-weight: 600;')}
+                                ${detailRow('Current Day', `Day ${enrolment.current_day_number}`, 'color: #38bdf8; font-weight: 700; font-size: 13px;')}
+                                ${detailRow('Loop Count', String(enrolment.loop_count ?? 0))}
+                                ${detailRow('Priority / Version', `P${j.priority ?? '—'} • v${j.version_number || 1}`, 'color: #818cf8; font-weight: 600;')}
+                                ${enrolment.base_subscription_history_id ? detailRow('Base Sub History ID', escapeHtml(enrolment.base_subscription_history_id), 'font-size: 11px; color: #fbbf24; font-family: monospace;') : ''}
+                                ${detailRow('Enrolled At', fmtDateTime(enrolment.enrolled_at), 'font-size: 11px;')}
+                                ${detailRow('Last Evaluated', fmtDateTime(enrolment.last_evaluated_at), 'font-size: 11px;')}
+                            </div>
+                        </div>
+                        <div style="margin-top: 12px; padding-top: 10px; border-top: 1px dashed #1e293b; display: flex; justify-content: flex-end;">
+                            <button class="btn" style="padding: 5px 12px; font-size: 11px; background: #4f46e5; color: #fff; font-weight: 600; border: 1px solid #818cf8;" onclick="filterAuditTrailLogs('ACTIVE', true)">🎯 Filter Active Tasks</button>
                         </div>
                     </div>
-                    <div class="item-details-grid">
-                        ${detailRow('Enrolment ID', escapeHtml(enrolment.id || 'N/A'), 'color: #a5b4fc; font-family: monospace; font-size: 11px; font-weight: 600;')}
-                        ${detailRow('Current Day', `Day ${enrolment.current_day_number}`, 'color: #38bdf8; font-weight: 700;')}
-                        ${detailRow('Loop Count', String(enrolment.loop_count ?? 0))}
-                        ${detailRow('Journey Priority', `P${j.priority !== undefined ? j.priority : '—'}`, 'color: #818cf8; font-weight: 700;')}
-                        ${detailRow('Journey Version', `v${j.version_number || 1}`)}
-                        ${enrolment.base_subscription_history_id ? detailRow('Base Sub History ID', escapeHtml(enrolment.base_subscription_history_id), 'font-size: 11px; color: #fbbf24; font-family: monospace;') : ''}
-                        ${detailRow('Enrolled At', fmtDateTime(enrolment.enrolled_at), 'font-size: 11px;')}
-                        ${detailRow('Last Evaluated', fmtDateTime(enrolment.last_evaluated_at), 'font-size: 11px;')}
+                    ` : `
+                    <div style="padding: 24px 16px; background: #0c1222; border: 1px dashed #1e293b; border-radius: 8px; color: #9ca3af; font-size: 13px; text-align: center; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;">
+                        <span style="font-size: 28px;">📭</span>
+                        <span>Creator is not currently enrolled in any journey.</span>
+                        <span style="font-size: 11px; color: #64748b;">Advance day or evaluate new user criteria to enroll.</span>
                     </div>
-                </div>`;
-            }
+                    `}
+                </div>
 
-            // 3. JOURNEY HISTORY
-            html += auditSectionHeader('📜 Journey Exit History (most recent first)', history.length);
-            if (history.length === 0) {
-                html += `<div style="padding: 10px; background: #0f172a; border: 1px solid #1e293b; border-radius: 6px; color: #9ca3af; font-size: 13px;">No past journey exits recorded.</div>`;
-            } else {
-                history.forEach((h, idx) => {
-                    const j = h.journey || {};
-                    let durationTxt = 'N/A';
-                    if (h.started_at && h.ended_at) {
-                        const mins = Math.round((new Date(h.ended_at) - new Date(h.started_at)) / 60000);
-                        durationTxt = mins >= 1440 ? `${(mins / 1440).toFixed(1)} days` : (mins >= 60 ? `${(mins / 60).toFixed(1)} hrs` : `${mins} mins`);
-                    }
-                    html += `<div class="item-card" style="border-left: 3px solid #475569;">
-                        <div class="item-card-header">
-                            <div class="item-title">
-                                <span>#${idx + 1}</span>
-                                <span>${escapeHtml(j.name || 'Journey')} (v${j.version_number || 1})</span>
-                                ${statusPillHtml(h.exit_reason)}
-                                <span class="status-pill-inactive" style="background: #1f2937; color: #9ca3af; border: 1px solid #374151;">📜 Episode #${history.length - idx}</span>
-                            </div>
-                            <div style="display: flex; gap: 6px; align-items: center;">
-                                ${idPill(h.id, '', 'History ID', 'background: #1f2937; color: #9ca3af; border-color: #374151;')}
-                                ${idPill(h.journey_id, 'journey-target-id', 'Journey ID')}
-                                <button class="btn" style="padding: 2px 8px; font-size: 11px; background: #374151; color: #e2e8f0; margin-left: 4px;" onclick="filterAuditTrailLogs('${h.id}', true)">📜 Filter Episode Tasks</button>
-                            </div>
+                <!-- RIGHT COLUMN: Journey Exit History (most recent first) -->
+                <div style="display: flex; flex-direction: column; height: 100%;">
+                    <div class="list-header-bar" style="margin: 0 0 10px 0; background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 8px 12px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 15px;">📜</span>
+                            <span style="color: #cbd5e1; font-weight: 700; font-size: 13px;">Journey Exit History (${history.length})</span>
                         </div>
-                        <div class="item-details-grid">
-                            ${detailRow('History ID', escapeHtml(h.id || 'N/A'), 'color: #9ca3af; font-family: monospace; font-size: 11px; font-weight: 600;')}
-                            ${detailRow('Exit Reason', escapeHtml(h.exit_reason || 'N/A'), 'color: #f87171; font-weight: 700;')}
-                            ${detailRow('Final Day Reached', `Day ${h.final_day_number}`, 'color: #38bdf8; font-weight: 700;')}
-                            ${detailRow('Loop Count', String(h.loop_count ?? 0))}
-                            ${detailRow('Started At', fmtDateTime(h.started_at), 'font-size: 11px;')}
-                            ${detailRow('Ended At', fmtDateTime(h.ended_at), 'font-size: 11px;')}
-                            ${detailRow('Time In Journey', durationTxt)}
-                        </div>
-                    </div>`;
-                });
-            }
+                        <span style="font-size: 11px; color: #9ca3af;">Most Recent First</span>
+                    </div>
+                    ${history.length === 0 ? `
+                    <div style="padding: 24px 16px; background: #0c1222; border: 1px dashed #1e293b; border-radius: 8px; color: #9ca3af; font-size: 13px; text-align: center; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;">
+                        <span style="font-size: 28px;">📜</span>
+                        <span>No past journey exits recorded.</span>
+                        <span style="font-size: 11px; color: #64748b;">Completed or cancelled journey runs will archive here.</span>
+                    </div>
+                    ` : `
+                    <div style="max-height: 480px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px;">
+                        ${history.map((h, idx) => {
+                            const j = h.journey || {};
+                            let durationTxt = 'N/A';
+                            if (h.started_at && h.ended_at) {
+                                const mins = Math.round((new Date(h.ended_at) - new Date(h.started_at)) / 60000);
+                                durationTxt = mins >= 1440 ? `${(mins / 1440).toFixed(1)} days` : (mins >= 60 ? `${(mins / 60).toFixed(1)} hrs` : `${mins} mins`);
+                            }
+                            return `<div class="item-card" style="border-left: 3px solid #475569; background: #0b1120; margin: 0;">
+                                <div class="item-card-header">
+                                    <div class="item-title">
+                                        <span class="status-pill-inactive" style="background: #1f2937; color: #9ca3af; border: 1px solid #374151;">Episode #${history.length - idx}</span>
+                                        <span style="font-weight: 600; color: #e2e8f0;">${escapeHtml(j.name || 'Journey')}</span>
+                                        ${statusPillHtml(h.exit_reason)}
+                                    </div>
+                                    <div style="display: flex; gap: 6px; align-items: center;">
+                                        ${idPill(h.id, '', 'History ID', 'background: #1f2937; color: #9ca3af; border-color: #374151;')}
+                                        <button class="btn" style="padding: 2px 8px; font-size: 11px; background: #374151; color: #e2e8f0;" onclick="filterAuditTrailLogs('${h.id}', true)">📜 Filter Episode Tasks</button>
+                                    </div>
+                                </div>
+                                <div class="item-details-grid" style="grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));">
+                                    ${detailRow('Exit Reason', escapeHtml(h.exit_reason || 'N/A'), 'color: #f87171; font-weight: 700;')}
+                                    ${detailRow('Final Day', `Day ${h.final_day_number}`, 'color: #38bdf8; font-weight: 700;')}
+                                    ${detailRow('Loop Count', String(h.loop_count ?? 0))}
+                                    ${detailRow('Duration', durationTxt, 'color: #a5b4fc;')}
+                                    ${detailRow('Started At', fmtDateTime(h.started_at), 'font-size: 11px;')}
+                                    ${detailRow('Ended At', fmtDateTime(h.ended_at), 'font-size: 11px;')}
+                                </div>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                    `}
+                </div>
+            </div>`;
 
             // 4. TASK EXECUTION LOGS CONTAINER
             html += `<div id="audit-trail-task-logs-container"></div>`;
 
             container.innerHTML = html;
 
-            renderAuditTrailTaskLogsContainer(document.getElementById('audit-trail-task-logs-container'), d, window.currentAuditTrailFilter, window.currentAuditTrailStatusFilter);
+            renderAuditTrailTaskLogsContainer(document.getElementById('audit-trail-task-logs-container'), d, window.currentAuditTrailFilter, window.currentAuditTrailStatusFilter, window.currentAuditTrailDayFilter);
         }
 
 
