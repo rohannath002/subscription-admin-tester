@@ -1628,6 +1628,17 @@
         }
         window.filterAuditTrailDay = filterAuditTrailDay;
 
+        function isLogActiveRun(l, enrolment) {
+            if (l.enrolment_id) return true;
+            if (l.history_id) return false;
+            if (enrolment && enrolment.enrolled_at) {
+                const enrolledTime = new Date(enrolment.enrolled_at).getTime();
+                const logTime = new Date(l.executed_at || l.scheduled_at).getTime();
+                return logTime >= enrolledTime;
+            }
+            return false;
+        }
+
         function renderAuditTrailView(container, d) {
             window.currentAuditTrailData = d;
             window.currentAuditTrailFilter = d.active_enrolment ? 'ACTIVE' : 'ALL';
@@ -1667,6 +1678,81 @@
 
             // 2 & 3. TWO-COLUMN SPLIT: Active Enrolment (Left) vs. Journey Exit History (Right)
             const j = enrolment?.journey || {};
+
+            let currentDayTasksHtml = '';
+            if (enrolment) {
+                const todayTasks = Array.isArray(enrolment.current_day_tasks) ? enrolment.current_day_tasks : [];
+                const dayConfig = enrolment.current_day_config || {};
+                const dayTitle = dayConfig.title ? ` — ${escapeHtml(dayConfig.title)}` : '';
+
+                currentDayTasksHtml += `<div style="margin-top: 14px; background: rgba(15, 23, 42, 0.7); border: 1px solid #1e293b; border-radius: 6px; padding: 10px 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px dashed #334155; padding-bottom: 6px;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span style="font-size: 13px;">📋</span>
+                            <span style="font-size: 12px; font-weight: 700; color: #38bdf8;">Today's Journey Tasks (Day ${enrolment.current_day_number}${dayTitle})</span>
+                        </div>
+                        <span style="font-size: 11px; color: #94a3b8; font-weight: 600;">${todayTasks.length} task${todayTasks.length === 1 ? '' : 's'}</span>
+                    </div>`;
+
+                if (todayTasks.length === 0) {
+                    currentDayTasksHtml += `<div style="font-size: 11px; color: #64748b; font-style: italic; padding: 6px 0;">
+                        🌴 Silent Day — No automated tasks configured for Day ${enrolment.current_day_number}.
+                    </div>`;
+                } else {
+                    currentDayTasksHtml += `<div style="display: flex; flex-direction: column; gap: 6px;">`;
+                    todayTasks.forEach((t, tIdx) => {
+                        const matchedLog = logs.find(l => 
+                            (l.enrolment_id === enrolment.id || isLogActiveRun(l, enrolment)) && 
+                            l.journey_task_id === t.id
+                        );
+
+                        let statusBadge = '';
+                        let executionDetail = '';
+                        if (matchedLog) {
+                            statusBadge = statusPillHtml(matchedLog.status);
+                            if (matchedLog.status === 'EXECUTED') {
+                                executionDetail = `<span style="font-size: 10px; color: #93c5fd;">⚡ Executed ${fmtDateTime(matchedLog.executed_at)}</span>`;
+                            } else if (matchedLog.status === 'PENDING') {
+                                executionDetail = `<span style="font-size: 10px; color: #fde68a;">⏱ Queued for ${fmtDateTime(matchedLog.scheduled_at)}</span>`;
+                            } else if (matchedLog.status === 'SKIPPED') {
+                                const r = matchedLog.skip_reason || matchedLog.metadata?.reason || 'Criteria not met';
+                                executionDetail = `<span style="font-size: 10px; color: #d8b4fe;">⏭️ Skipped (${escapeHtml(r)})</span>`;
+                            }
+                        } else {
+                            if (t.trigger_event === 'AFTER_IG_CONNECT') {
+                                statusBadge = '<span class="status-pill-pending" style="background: #312e81; color: #c7d2fe; border: 1px solid #6366f1;">🕒 WAITING FOR IG CONNECT</span>';
+                            } else if (t.trigger_event === 'ON_SCREEN_VISIT') {
+                                statusBadge = '<span class="status-pill-pending" style="background: #312e81; color: #c7d2fe; border: 1px solid #6366f1;">🕒 WAITING FOR SCREEN VISIT</span>';
+                            } else {
+                                statusBadge = '<span class="status-pill-paused" style="background: #27272a; color: #a1a1aa; border: 1px solid #52525b;">🕒 AWAITING CRON EVALUATION</span>';
+                            }
+                        }
+
+                        const wabaIcon = t.waba_template_code ? '<span title="WABA message" style="font-size: 11px;">💬</span>' : '';
+                        const pushIcon = t.push_template_code ? '<span title="Push notification" style="font-size: 11px;">🔔</span>' : '';
+                        const delayTxt = t.delay_minutes ? `+${t.delay_minutes}m` : '+0m delay';
+
+                        currentDayTasksHtml += `<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px; padding: 6px 8px; background: rgba(30, 41, 59, 0.4); border: 1px solid #1e293b; border-radius: 4px;">
+                            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                <span style="font-size: 11px; font-weight: 700; color: #94a3b8;">#${tIdx + 1}</span>
+                                <span style="font-size: 11px; font-weight: 600; color: #f1f5f9;">${escapeHtml(t.title || t.task_type)}</span>
+                                <span style="font-size: 10px; background: #1e293b; color: #94a3b8; padding: 1px 5px; border-radius: 3px;">${escapeHtml(t.task_type)}</span>
+                                <span style="font-size: 10px; background: #0c4a6e; color: #7dd3fc; padding: 1px 5px; border-radius: 3px;">${delayTxt}</span>
+                                ${wabaIcon}
+                                ${pushIcon}
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                ${statusBadge}
+                                ${executionDetail}
+                            </div>
+                        </div>`;
+                    });
+                    currentDayTasksHtml += `</div>`;
+                }
+
+                currentDayTasksHtml += `</div>`;
+            }
+
             html += `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; margin-top: 14px; align-items: stretch;">
                 <!-- LEFT COLUMN: Active Journey Enrolment -->
                 <div style="display: flex; flex-direction: column; height: 100%;">
@@ -1702,6 +1788,7 @@
                                 ${detailRow('Enrolled At', fmtDateTime(enrolment.enrolled_at), 'font-size: 11px;')}
                                 ${detailRow('Last Evaluated', fmtDateTime(enrolment.last_evaluated_at), 'font-size: 11px;')}
                             </div>
+                            ${currentDayTasksHtml}
                         </div>
                         <div style="margin-top: 12px; padding-top: 10px; border-top: 1px dashed #1e293b; display: flex; justify-content: flex-end;">
                             <button class="btn" style="padding: 5px 12px; font-size: 11px; background: #4f46e5; color: #fff; font-weight: 600; border: 1px solid #818cf8;" onclick="filterAuditTrailLogs('ACTIVE', true)">🎯 Filter Active Tasks</button>
