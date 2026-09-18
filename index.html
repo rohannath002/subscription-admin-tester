@@ -1549,7 +1549,7 @@
             }
             if (statusVal === 'PENDING') return `<span class="status-pill-pending">${escapeHtml(statusVal)}</span>`;
             if (statusVal === 'SKIPPED') return `<span class="status-pill-skipped">${escapeHtml(statusVal)}</span>`;
-            if (statusVal.includes('CANCEL') || statusVal.includes('KILL') || statusVal.includes('FAIL')) {
+            if (statusVal.includes('CANCEL') || statusVal.includes('KILL') || statusVal.includes('FAIL') || statusVal === 'EXPIRED') {
                 return `<span class="status-pill-cancelled">${escapeHtml(statusVal)}</span>`;
             }
             return `<span class="status-pill-default">${escapeHtml(statusVal)}</span>`;
@@ -1673,6 +1673,10 @@
                     ${detailRow('Instagram Handle', creator.insta_user_name ? `@${escapeHtml(creator.insta_user_name)}` : 'N/A', 'color: #f0abfc;')}
                     ${detailRow('Instagram Connected', creator.instagram_connected ? '✅ Yes' : '❌ No')}
                     ${detailRow('Account Created', fmtDateTime(creator.created_at), 'font-size: 11px;')}
+                    ${detailRow('Subscription Status', d.subscription ? statusPillHtml(d.subscription.status) : statusPillHtml('NO SUBSCRIPTION'))}
+                    ${d.subscription ? detailRow('Subscription Plan', escapeHtml(d.subscription.plan?.name || 'N/A'), 'color: #a5b4fc; font-weight: 600;') : ''}
+                    ${d.subscription ? detailRow('Subscription Ends', fmtDateTime(d.subscription.end_date), 'font-size: 11px;') : ''}
+                    ${d.subscription ? detailRow('Auto Renew', d.subscription.auto_renew ? '✅ Yes' : '❌ No') : ''}
                 </div>
             </div>`;
 
@@ -1703,7 +1707,8 @@
                     todayTasks.forEach((t, tIdx) => {
                         const matchedLog = logs.find(l => 
                             (l.enrolment_id === enrolment.id || isLogActiveRun(l, enrolment)) && 
-                            l.journey_task_id === t.id
+                            l.journey_task_id === t.id &&
+                            (l.journey_day_number === undefined || l.journey_day_number === enrolment.current_day_number)
                         );
 
                         let statusBadge = '';
@@ -1782,9 +1787,10 @@
                             <div class="item-details-grid" style="grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));">
                                 ${detailRow('Enrolment ID', escapeHtml(enrolment.id || 'N/A'), 'color: #a5b4fc; font-family: monospace; font-size: 11px; font-weight: 600;')}
                                 ${detailRow('Current Day', `Day ${enrolment.current_day_number}`, 'color: #38bdf8; font-weight: 700; font-size: 13px;')}
-                                ${detailRow('Loop Count', String(enrolment.loop_count ?? 0))}
+                                ${detailRow('Loop Count', (enrolment.loop_count > 0 ? `Loop ${enrolment.loop_count} <span style="font-size: 10px; color: #c084fc; font-weight: 600;">(🔁 Re-cycle)</span>` : '0 (Initial)'))}
                                 ${detailRow('Priority / Version', `P${j.priority ?? '—'} • v${j.version_number || 1}`, 'color: #818cf8; font-weight: 600;')}
                                 ${enrolment.base_subscription_history_id ? detailRow('Base Sub History ID', escapeHtml(enrolment.base_subscription_history_id), 'font-size: 11px; color: #fbbf24; font-family: monospace;') : ''}
+                                ${enrolment.loop_started_at ? detailRow('Loop Started At', fmtDateTime(enrolment.loop_started_at), 'font-size: 11px; color: #c084fc; font-weight: 600;') : ''}
                                 ${detailRow('Enrolled At', fmtDateTime(enrolment.enrolled_at), 'font-size: 11px;')}
                                 ${detailRow('Last Evaluated', fmtDateTime(enrolment.last_evaluated_at), 'font-size: 11px;')}
                             </div>
@@ -1842,7 +1848,7 @@
                                 <div class="item-details-grid" style="grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));">
                                     ${detailRow('Exit Reason', escapeHtml(h.exit_reason || 'N/A'), 'color: #f87171; font-weight: 700;')}
                                     ${detailRow('Final Day', `Day ${h.final_day_number}`, 'color: #38bdf8; font-weight: 700;')}
-                                    ${detailRow('Loop Count', String(h.loop_count ?? 0))}
+                                    ${detailRow('Loop Count', (h.loop_count > 0 ? `Loop ${h.loop_count} <span style="font-size: 10px; color: #c084fc; font-weight: 600;">(Completed ${h.loop_count} loops)</span>` : '0 (Single Run)'))}
                                     ${detailRow('Duration', durationTxt, 'color: #a5b4fc;')}
                                     ${detailRow('Started At', fmtDateTime(h.started_at), 'font-size: 11px;')}
                                     ${detailRow('Ended At', fmtDateTime(h.ended_at), 'font-size: 11px;')}
@@ -1904,7 +1910,7 @@
                 const k = String(l.status || 'UNKNOWN').toUpperCase();
                 statusCounts[k] = (statusCounts[k] || 0) + 1;
 
-                const dNum = l.journey_day?.day_number;
+                const dNum = (l.journey_day_number !== undefined && l.journey_day_number !== null) ? l.journey_day_number : l.journey_day?.day_number;
                 const dKey = (dNum !== undefined && dNum !== null) ? String(dNum) : 'NO_DAY';
                 availableDaysMap[dKey] = (availableDaysMap[dKey] || 0) + 1;
             });
@@ -1923,16 +1929,22 @@
             }
             if (activeDayFilter !== 'ALL') {
                 if (activeDayFilter === 'NO_DAY') {
-                    filteredLogs = filteredLogs.filter(l => l.journey_day?.day_number === undefined || l.journey_day?.day_number === null);
+                    filteredLogs = filteredLogs.filter(l => {
+                        const dNum = (l.journey_day_number !== undefined && l.journey_day_number !== null) ? l.journey_day_number : l.journey_day?.day_number;
+                        return dNum === undefined || dNum === null;
+                    });
                 } else {
-                    filteredLogs = filteredLogs.filter(l => String(l.journey_day?.day_number) === String(activeDayFilter));
+                    filteredLogs = filteredLogs.filter(l => {
+                        const dNum = (l.journey_day_number !== undefined && l.journey_day_number !== null) ? l.journey_day_number : l.journey_day?.day_number;
+                        return String(dNum) === String(activeDayFilter);
+                    });
                 }
             }
 
             // 4. Sort day-wise and chronologically
             filteredLogs = [...filteredLogs].sort((a, b) => {
-                const dayA = a.journey_day?.day_number;
-                const dayB = b.journey_day?.day_number;
+                const dayA = (a.journey_day_number !== undefined && a.journey_day_number !== null) ? a.journey_day_number : a.journey_day?.day_number;
+                const dayB = (b.journey_day_number !== undefined && b.journey_day_number !== null) ? b.journey_day_number : b.journey_day?.day_number;
                 const hasDayA = dayA !== undefined && dayA !== null;
                 const hasDayB = dayB !== undefined && dayB !== null;
                 if (hasDayA && hasDayB && dayA !== dayB) return dayA - dayB;
@@ -2029,7 +2041,7 @@
             } else {
                 let lastRenderedDay = null;
                 filteredLogs.forEach((l, idx) => {
-                    const currentDay = (l.journey_day?.day_number !== undefined && l.journey_day?.day_number !== null) ? l.journey_day.day_number : 'NO_DAY';
+                    const currentDay = (l.journey_day_number !== undefined && l.journey_day_number !== null) ? l.journey_day_number : ((l.journey_day?.day_number !== undefined && l.journey_day?.day_number !== null) ? l.journey_day.day_number : 'NO_DAY');
                     if (activeDayFilter === 'ALL' && sortedDayKeys.length > 1 && currentDay !== lastRenderedDay) {
                         lastRenderedDay = currentDay;
                         const dayTitle = l.journey_day?.title ? ` — ${escapeHtml(l.journey_day.title)}` : '';
@@ -2095,7 +2107,9 @@
                     const wabaCode = l.metadata?.waba_template_code || l.journey_task?.waba_template_code || null;
                     const pushCode = l.metadata?.push_template_code || l.journey_task?.push_template_code || null;
 
-                    const dayNum = l.journey_day?.day_number;
+                    const dayNum = (l.journey_day_number !== undefined && l.journey_day_number !== null) ? l.journey_day_number : l.journey_day?.day_number;
+                    const isRecurring = l.is_recurring_repeat || (l.journey_day && dayNum !== undefined && l.journey_day.day_number !== undefined && dayNum !== l.journey_day.day_number);
+                    const recurringTag = isRecurring ? `<span class="status-pill-active" style="background: #312e81; color: #c7d2fe; border: 1px solid #6366f1; font-size: 10px;" title="Recurring repeat from Day ${l.journey_day?.day_number}">🔁 Day ${l.journey_day?.day_number} repeat</span>` : '';
                     const dayBadge = (dayNum !== undefined && dayNum !== null) ? `<span class="status-pill-active" style="background: #0c4a6e; color: #7dd3fc; border: 1px solid #0ea5e9; cursor: pointer;" onclick="filterAuditTrailDay('${dayNum}')" title="Click to filter to Day ${dayNum} tasks">Day ${dayNum} 🔍</span>` : '';
                     const dayTitleText = l.journey_day?.title ? escapeHtml(l.journey_day.title) : '';
                     const wabaHeaderBadge = wabaCode ? '<span class="status-pill-active" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3);">💬 WABA</span>' : '';
@@ -2122,6 +2136,7 @@
                             <div class="item-title">
                                 <span>#${idx + 1}</span>
                                 ${dayBadge}
+                                ${recurringTag}
                                 <span>${dayTitleText ? `${dayTitleText} — ` : ''}${escapeHtml(l.task_type || 'Task')}</span>
                                 ${statusPillHtml(l.status)}
                                 ${enrolmentRunBadge}
@@ -3489,9 +3504,30 @@
                 if (journeyId) url += `&journey_id=${journeyId}`;
                 const res = await fetch(url, { headers: HEADERS });
                 const data = await res.json();
+
+                // The audit-trail endpoint doesn't include subscription status, so fetch it separately.
+                if (data && data.data) {
+                    data.data.subscription = await fetchInfluencerSubscription(influencerId);
+                }
+
                 setResponse('enrolment-response', { status: res.status, data });
             } catch (err) {
                 setResponse('enrolment-response', { error: err.message });
+            }
+        }
+
+        async function fetchInfluencerSubscription(influencerId) {
+            try {
+                const rootApiUrl = BASE_URL.replace('/admin/subscription-journey', '');
+                const res = await fetch(`${rootApiUrl}/subscriptions/influencer/${influencerId}`, { headers: HEADERS });
+                const data = await res.json();
+                const historyList = data?.data || [];
+                if (!Array.isArray(historyList) || historyList.length === 0) return null;
+                const activeEntry = historyList.find(h => h.subscription && h.subscription.status === 'ACTIVE');
+                return (activeEntry || historyList[0])?.subscription || null;
+            } catch (err) {
+                console.warn('Failed to fetch subscription status for creator:', err);
+                return null;
             }
         }
 
