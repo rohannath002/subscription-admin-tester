@@ -905,7 +905,7 @@
 
                         <div class="grid" style="margin-bottom: 8px;">
                             <div>
-                                <label>Linked Offer (for GRANT_OFFER)</label>
+                                <label>Linked Offer (for GRANT_OFFER & TRACK_ABANDONMENT)</label>
                                 <select id="edit-task-offer">
                                     <option value="">-- No Offer Linked --</option>
                                 </select>
@@ -940,18 +940,20 @@
 
                         <div class="grid" style="margin-bottom: 8px;">
                             <div>
-                                <label>Offer Reveal Mode</label>
-                                <select id="edit-task-reveal-mode">
-                                    <option value="MANUAL">MANUAL (Hidden behind scratch/tap)</option>
-                                    <option value="AUTOMATIC">AUTOMATIC (Auto-play 2s Loading)</option>
+                                <label style="font-weight: 600;">Offer Reveal Mode (GRANT_OFFER & TRACK_ABANDONMENT)</label>
+                                <select id="edit-task-reveal-mode" onchange="syncEditTaskRevealTimer()">
+                                    <option value="MANUAL">🎯 MANUAL (Urgency Pill / Tap to Open)</option>
+                                    <option value="AUTOMATIC">✨ AUTOMATIC (Auto-Reveal on Screen Entry)</option>
                                 </select>
+                                <small id="edit-task-reveal-mode-hint" style="color: #94a3b8; font-size: 11px; display: block; margin-top: 3px;">Urgency countdown pill on Home/Paywall</small>
                             </div>
                             <div>
-                                <label>Start Timer on Grant?</label>
+                                <label style="font-weight: 600;">Start Timer on Grant?</label>
                                 <select id="edit-task-start-timer-grant">
-                                    <option value="false">False (Pause timer until tapped)</option>
-                                    <option value="true">True (Start countdown immediately)</option>
+                                    <option value="true">⏱️ True (Start timer immediately on grant)</option>
+                                    <option value="false">⏸️ False (Pause timer until screen entry)</option>
                                 </select>
+                                <small id="edit-task-timer-hint" style="color: #38bdf8; font-size: 11px; display: block; margin-top: 3px;">Required: true for MANUAL mode</small>
                             </div>
                         </div>
 
@@ -2948,20 +2950,22 @@
                         <select class="task-offer-id" style="width: 100%; box-sizing: border-box; font-size: 13px; padding: 8px 10px;">${offerOptions}</select>
                     </div>
 
-                    <div class="reveal-timer-setup-box" style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; display: ${typeVal === 'GRANT_OFFER' ? 'grid' : 'none'};">
+                    <div class="reveal-timer-setup-box" style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; display: ${(typeVal === 'GRANT_OFFER' || typeVal === 'TRACK_ABANDONMENT') ? 'grid' : 'none'};">
                         <div>
-                            <label style="font-weight: 600; color: #cbd5e1; font-size: 12px; display: block; margin-bottom: 4px;">Reveal Mode (Mandatory for GRANT_OFFER)</label>
+                            <label style="font-weight: 600; color: #cbd5e1; font-size: 12px; display: block; margin-bottom: 4px;">Reveal Mode (GRANT_OFFER & TRACK_ABANDONMENT)</label>
                             <select class="task-reveal-mode" style="width: 100%; box-sizing: border-box; font-size: 13px; padding: 8px 10px;">
-                                <option value="MANUAL" ${revealModeVal === 'MANUAL' ? 'selected' : ''}>MANUAL (Interactive Pill / Wait for Tap)</option>
-                                <option value="AUTOMATIC" ${revealModeVal === 'AUTOMATIC' ? 'selected' : ''}>AUTOMATIC (Auto-play 2s Loading)</option>
+                                <option value="MANUAL" ${revealModeVal === 'MANUAL' ? 'selected' : ''}>🎯 MANUAL (Urgency Pill / Tap to Open)</option>
+                                <option value="AUTOMATIC" ${revealModeVal === 'AUTOMATIC' ? 'selected' : ''}>✨ AUTOMATIC (Auto-Reveal on Screen Entry)</option>
                             </select>
+                            <small class="task-reveal-hint" style="color: #94a3b8; font-size: 11px; display: block; margin-top: 3px;">${revealModeVal === 'AUTOMATIC' ? 'Auto-plays Hooray celebration on screen entry' : 'Urgency countdown pill on Home/Paywall'}</small>
                         </div>
                         <div>
                             <label style="font-weight: 600; color: #cbd5e1; font-size: 12px; display: block; margin-bottom: 4px;">Start Timer on Grant?</label>
                             <select class="task-start-timer-grant" style="width: 100%; box-sizing: border-box; font-size: 13px; padding: 8px 10px;">
-                                <option value="true" ${startTimerGrantVal === 'true' ? 'selected' : ''}>True (Start 15-min timer on grant)</option>
-                                <option value="false" ${startTimerGrantVal === 'false' ? 'selected' : ''}>False (Pause timer until tapped)</option>
+                                <option value="true" ${startTimerGrantVal === 'true' ? 'selected' : ''}>⏱️ True (Start timer immediately on grant)</option>
+                                <option value="false" ${startTimerGrantVal === 'false' ? 'selected' : ''}>⏸️ False (Pause timer until screen entry)</option>
                             </select>
+                            <small class="task-timer-hint" style="color: #38bdf8; font-size: 11px; display: block; margin-top: 3px;">${revealModeVal === 'AUTOMATIC' ? 'Required: false for AUTOMATIC mode' : 'Required: true for MANUAL mode'}</small>
                         </div>
                     </div>
                 </div>
@@ -3006,10 +3010,28 @@
             const revealTimerBox = div.querySelector('.reveal-timer-setup-box');
             if (typeSelect && revealTimerBox) {
                 typeSelect.addEventListener('change', () => {
-                    if (typeSelect.value === 'GRANT_OFFER') {
+                    if (typeSelect.value === 'GRANT_OFFER' || typeSelect.value === 'TRACK_ABANDONMENT') {
                         revealTimerBox.style.display = 'grid';
                     } else {
                         revealTimerBox.style.display = 'none';
+                    }
+                });
+            }
+
+            const revealModeSelect = div.querySelector('.task-reveal-mode');
+            const startTimerSelect = div.querySelector('.task-start-timer-grant');
+            const revealHint = div.querySelector('.task-reveal-hint');
+            const timerHint = div.querySelector('.task-timer-hint');
+            if (revealModeSelect && startTimerSelect) {
+                revealModeSelect.addEventListener('change', () => {
+                    if (revealModeSelect.value === 'AUTOMATIC') {
+                        startTimerSelect.value = 'false';
+                        if (revealHint) revealHint.textContent = 'Auto-plays Hooray celebration on screen entry';
+                        if (timerHint) timerHint.textContent = 'Required: false for AUTOMATIC mode (paused)';
+                    } else {
+                        startTimerSelect.value = 'true';
+                        if (revealHint) revealHint.textContent = 'Urgency countdown pill on Home/Paywall';
+                        if (timerHint) timerHint.textContent = 'Required: true for MANUAL mode (immediate)';
                     }
                 });
             }
@@ -3033,7 +3055,7 @@
                     const offerIdVal = row.querySelector('.task-offer-id')?.value;
 
                     let conditions = undefined;
-                    if (taskType === 'GRANT_OFFER') {
+                    if (taskType === 'GRANT_OFFER' || taskType === 'TRACK_ABANDONMENT') {
                         const revealModeVal = row.querySelector('.task-reveal-mode')?.value || 'MANUAL';
                         const startTimerVal = row.querySelector('.task-start-timer-grant')?.value;
                         conditions = {
@@ -3226,6 +3248,22 @@
             if (form) form.style.display = 'none';
         }
 
+        function syncEditTaskRevealTimer() {
+            const revealMode = document.getElementById('edit-task-reveal-mode')?.value;
+            const timerSelect = document.getElementById('edit-task-start-timer-grant');
+            const revealHint = document.getElementById('edit-task-reveal-mode-hint');
+            const timerHint = document.getElementById('edit-task-timer-hint');
+            if (revealMode === 'AUTOMATIC') {
+                if (timerSelect) timerSelect.value = 'false';
+                if (revealHint) revealHint.textContent = 'Auto-plays Hooray celebration on screen entry';
+                if (timerHint) timerHint.textContent = 'Required: false for AUTOMATIC mode (paused)';
+            } else {
+                if (timerSelect) timerSelect.value = 'true';
+                if (revealHint) revealHint.textContent = 'Urgency countdown pill on Home/Paywall';
+                if (timerHint) timerHint.textContent = 'Required: true for MANUAL mode (immediate)';
+            }
+        }
+
         function populateEditTaskOffers(selectedOfferId = '') {
             const select = document.getElementById('edit-task-offer');
             if (!select) return;
@@ -3294,7 +3332,11 @@
                     if (condIgEl) condIgEl.value = cond.is_instagram_connected !== undefined ? String(cond.is_instagram_connected) : '';
                     if (revealModeEl) revealModeEl.value = cond.reveal_mode || 'MANUAL';
                     const startTimerEl = document.getElementById('edit-task-start-timer-grant');
-                    if (startTimerEl) startTimerEl.value = cond.start_timer_on_grant !== undefined ? String(cond.start_timer_on_grant) : 'false';
+                    if (startTimerEl) {
+                        const fallbackTimer = (cond.reveal_mode === 'AUTOMATIC') ? 'false' : 'true';
+                        startTimerEl.value = cond.start_timer_on_grant !== undefined ? String(cond.start_timer_on_grant) : fallbackTimer;
+                    }
+                    syncEditTaskRevealTimer();
 
                     if (formContainer) formContainer.style.display = 'block';
                     showToast(`✅ Task ${task.id.substring(0, 8)}... loaded into form!`);
