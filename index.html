@@ -695,6 +695,27 @@
                             </div>
                         </div>
 
+                        <div class="grid">
+                            <div>
+                                <label>Has Refunded Subscription?</label>
+                                <select id="journey-target-has-refunded" onchange="toggleDaysSinceRefundVisibility()">
+                                    <option value="">None (Optional)</option>
+                                    <option value="true">True</option>
+                                    <option value="false">False</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid" id="journey-refund-days-container" style="display: none; background: rgba(15, 23, 42, 0.8); padding: 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid var(--card-border);">
+                            <div>
+                                <label style="display: flex; align-items: center; gap: 6px;">
+                                    <span>Days Since Refund (Min)</span>
+                                    <span style="font-size: 11px; color: #a5b4fc; font-weight: normal;">(Applies to Refunded Subscription)</span>
+                                </label>
+                                <input type="number" id="journey-target-refund-days-min" placeholder="e.g. 3">
+                            </div>
+                        </div>
+
                         <button class="btn" onclick="createJourney()">Create Journey</button>
                     </div>
                 </div>
@@ -2546,6 +2567,8 @@
             const planMin = document.getElementById('journey-target-plan-min').value;
             const planMax = document.getElementById('journey-target-plan-max').value;
             const activeDays = document.getElementById('journey-target-active-days').value;
+            const hasRefundedVal = document.getElementById('journey-target-has-refunded')?.value;
+            const refundDaysMin = document.getElementById('journey-target-refund-days-min')?.value;
 
             const criteria = {};
             if (targetIgVal !== '') criteria.is_instagram_connected = targetIgVal === 'true';
@@ -2557,6 +2580,8 @@
                 if (planMax !== '') criteria.max_plan_duration_days = parseInt(planMax);
             }
             if (activeDays !== '') criteria.active_within_days = parseInt(activeDays);
+            if (hasRefundedVal !== '' && hasRefundedVal !== undefined) criteria.has_refunded_subscription = hasRefundedVal === 'true';
+            if (hasRefundedVal === 'true' && refundDaysMin !== '' && refundDaysMin !== undefined) criteria.days_since_refund_min = parseInt(refundDaysMin);
 
             return Object.keys(criteria).length > 0 ? criteria : undefined;
         }
@@ -2642,6 +2667,8 @@
                         const planMinEl = document.getElementById('journey-target-plan-min');
                         const planMaxEl = document.getElementById('journey-target-plan-max');
                         const activeDaysEl = document.getElementById('journey-target-active-days');
+                        const hasRefundedEl = document.getElementById('journey-target-has-refunded');
+                        const refundDaysMinEl = document.getElementById('journey-target-refund-days-min');
 
                         if (igEl) igEl.value = tc.is_instagram_connected !== undefined ? String(tc.is_instagram_connected) : '';
                         if (minEl) minEl.value = tc.registered_days_min !== undefined ? tc.registered_days_min : '';
@@ -2650,7 +2677,10 @@
                         if (planMinEl) planMinEl.value = tc.min_plan_duration_days !== undefined ? tc.min_plan_duration_days : '';
                         if (planMaxEl) planMaxEl.value = tc.max_plan_duration_days !== undefined ? tc.max_plan_duration_days : '';
                         if (activeDaysEl) activeDaysEl.value = tc.active_within_days !== undefined ? tc.active_within_days : '';
+                        if (hasRefundedEl) hasRefundedEl.value = tc.has_refunded_subscription !== undefined ? String(tc.has_refunded_subscription) : '';
+                        if (refundDaysMinEl) refundDaysMinEl.value = tc.days_since_refund_min !== undefined ? tc.days_since_refund_min : '';
                         if (typeof togglePlanDurationDaysVisibility === 'function') togglePlanDurationDaysVisibility();
+                        if (typeof toggleDaysSinceRefundVisibility === 'function') toggleDaysSinceRefundVisibility();
                     }
                 }
             } catch (err) {
@@ -3798,6 +3828,19 @@
             }
         }
 
+        function toggleDaysSinceRefundVisibility() {
+            const val = document.getElementById('journey-target-has-refunded')?.value;
+            const container = document.getElementById('journey-refund-days-container');
+            if (!container) return;
+            if (val === 'true') {
+                container.style.display = 'grid';
+            } else {
+                container.style.display = 'none';
+                const minEl = document.getElementById('journey-target-refund-days-min');
+                if (minEl) minEl.value = '';
+            }
+        }
+
         function initDefaultCreatorIds() {
             const creatorInputIds = [
                 'manual-creator-id',
@@ -3819,6 +3862,7 @@
             reloadAllTesterData();
             toggleFixedRangeInputs();
             togglePlanDurationDaysVisibility();
+            toggleDaysSinceRefundVisibility();
         });
     </script>
 </body>
