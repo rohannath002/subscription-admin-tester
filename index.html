@@ -339,6 +339,56 @@
             </div>
         </div>
 
+        <!-- ADMIN AUTHENTICATION & JWT SESSION PANEL -->
+        <div class="section" id="admin-auth-section" style="background: #0f172a; border: 1px solid #1e3a8a; border-radius: 8px; padding: 16px 20px; margin-bottom: 25px; box-shadow: 0 4px 14px rgba(0,0,0,0.3);">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <h3 style="margin: 0; font-size: 16px; color: #93c5fd; display: flex; align-items: center; gap: 8px;">
+                        🔐 Admin Authentication &amp; Session (JWT)
+                    </h3>
+                    <span id="admin-auth-badge" style="font-size: 12px; padding: 3px 10px; border-radius: 12px; background: #374151; color: #9ca3af; font-weight: 600;">⚪ Checking Token...</span>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button type="button" class="btn" style="padding: 4px 10px; font-size: 12px; background: #334155;" onclick="toggleTokenDetails()">🔍 Toggle Token Details</button>
+                    <button type="button" class="btn" style="padding: 4px 10px; font-size: 12px; background: #dc2626;" onclick="logoutAdmin()">🚪 Logout / Reset</button>
+                </div>
+            </div>
+
+            <!-- Login Form Grid -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end;">
+                <div>
+                    <label style="font-size: 12px; color: #94a3b8; margin-bottom: 4px; display: block;">Admin Email (POST /api/v1/auth/login)</label>
+                    <input type="email" id="admin-email" placeholder="admin@influish.com" value="rohan@influish.com" style="width: 100%; box-sizing: border-box; padding: 7px 10px; font-size: 13px; background: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 6px;">
+                </div>
+                <div>
+                    <label style="font-size: 12px; color: #94a3b8; margin-bottom: 4px; display: block;">Password</label>
+                    <input type="password" id="admin-password" placeholder="Enter admin password" value="12345678" style="width: 100%; box-sizing: border-box; padding: 7px 10px; font-size: 13px; background: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 6px;" onkeydown="if(event.key==='Enter') executeAdminLogin()">
+                </div>
+                <div>
+                    <button type="button" id="btn-admin-login" class="btn" style="padding: 8px 18px; font-size: 13px; background: #2563eb; font-weight: 600; white-space: nowrap;" onclick="executeAdminLogin()">
+                        🔑 Admin Login
+                    </button>
+                </div>
+            </div>
+
+            <!-- Token Management & Decoded Details Drawer -->
+            <div id="admin-token-drawer" style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed #1e3a8a;">
+                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
+                    <label style="font-size: 12px; color: #94a3b8; margin: 0; white-space: nowrap; font-weight: 600;">Active Bearer Token:</label>
+                    <input type="text" id="admin-token-input" placeholder="Bearer JWT Token..." style="flex: 1; padding: 6px 10px; font-size: 12px; font-family: monospace; background: #0f172a; color: #a5f3fc; border: 1px solid #334155; border-radius: 6px;">
+                    <button type="button" class="btn" style="padding: 5px 12px; font-size: 12px; background: #059669;" onclick="saveCustomAdminToken()">💾 Apply Token</button>
+                    <button type="button" class="btn" style="padding: 5px 12px; font-size: 12px; background: #475569;" onclick="copyAdminToken()">📋 Copy</button>
+                </div>
+                <div id="admin-session-info" style="font-size: 12px; color: #94a3b8; display: flex; flex-wrap: wrap; gap: 16px; padding: 8px 12px; background: #0f172a; border-radius: 6px; border: 1px solid #1e293b;">
+                    <span>👤 Admin ID: <strong id="token-admin-id" style="color: #f8fafc;">--</strong></span>
+                    <span>📧 Email: <strong id="token-admin-email" style="color: #f8fafc;">--</strong></span>
+                    <span>⏰ Expires: <strong id="token-admin-exp" style="color: #f8fafc;">--</strong></span>
+                    <span>🛡️ Session: <strong id="token-admin-status" style="color: #10b981;">--</strong></span>
+                </div>
+                <div id="admin-login-error" style="display: none; margin-top: 8px; padding: 8px 12px; background: #450a0a; border: 1px solid #7f1d1d; border-radius: 6px; color: #fca5a5; font-size: 12px;"></div>
+            </div>
+        </div>
+
         <!-- STEP 1: PLAN MODULE -->
         <div class="section" id="step1-plan">
             <h2>📌 Step 1: SubscriptionPlan Module <span class="badge">ACTIVE</span></h2>
@@ -411,11 +461,14 @@
                             </select>
                         </div>
                         <div>
-                            <label>Page / Limit</label>
-                            <div style="display: flex; gap: 5px;">
-                                <input type="number" id="query-page" value="1" placeholder="Page">
-                                <input type="number" id="query-limit" value="10" placeholder="Limit">
-                            </div>
+                            <label>Filter plan_type</label>
+                            <select id="filter-plan-type">
+                                <option value="">All Types</option>
+                                <option value="MONTHLY">MONTHLY</option>
+                                <option value="QUARTERLY">QUARTERLY</option>
+                                <option value="YEARLY">YEARLY</option>
+                                <option value="CUSTOM">CUSTOM</option>
+                            </select>
                         </div>
                     </div>
                     <button class="btn btn-secondary" style="margin-bottom: 20px; width: 100%;" onclick="getAllPlans()">Get All Plans</button>
@@ -695,6 +748,10 @@
                             </div>
                         </div>
 
+                        <!-- Refund targeting disabled for now: journey-engine.service.ts no longer evaluates
+                             has_refunded_subscription / days_since_refund_min since the refund API doesn't
+                             expire the Subscription record, so these fields never affected enrolment anyway.
+                             Re-enable once the engine check is restored.
                         <div class="grid">
                             <div>
                                 <label>Has Refunded Subscription?</label>
@@ -715,6 +772,7 @@
                                 <input type="number" id="journey-target-refund-days-min" placeholder="e.g. 3">
                             </div>
                         </div>
+                        -->
 
                         <button class="btn" onclick="createJourney()">Create Journey</button>
                     </div>
@@ -742,16 +800,24 @@
                     </div>
                     <button class="btn btn-secondary" style="margin-bottom: 20px; width: 100%;" onclick="getAllJourneys()">Get All Journeys</button>
                     
-                    <h3>Manage / Clone / Kill Journey</h3>
+                    <h3>Manage / Kill / Reorder Journey</h3>
                     <label>Target Journey ID (UUID)</label>
                     <input type="text" id="journey-target-id" placeholder="Paste Journey UUID here">
                     
                     <div style="display: flex; gap: 8px; margin-top: 5px; flex-wrap: wrap;">
                         <button class="btn" style="background: #3b82f6; flex: 1;" onclick="getJourneyById()">Get By ID</button>
                         <button class="btn" style="background: #f59e0b; flex: 1;" onclick="updateJourney()">Update Journey</button>
-                        <button class="btn" style="background: #8b5cf6; flex: 1;" onclick="cloneJourney()">Clone (v+1)</button>
                         <button class="btn" style="background: #ef4444; flex: 1;" onclick="killJourney()">Kill Switch</button>
                         <button class="btn" style="background: #dc2626; flex: 1;" onclick="deleteJourney()">Delete</button>
+                    </div>
+
+                    <div style="margin-top: 15px; padding: 12px; border: 1px solid #374151; border-radius: 6px; background: rgba(30, 41, 59, 0.4);">
+                        <label style="font-weight: 600; color: #a78bfa;">Atomic Priority Reorder</label>
+                        <div style="display: flex; gap: 8px; margin-top: 5px;">
+                            <input type="number" id="journey-reorder-priority" min="1" placeholder="Target Priority (e.g. 1)" style="flex: 1; margin: 0;">
+                            <button class="btn" style="background: #8b5cf6; width: auto; padding: 0 16px; font-weight: 600;" onclick="reorderJourney()">Reorder Priority</button>
+                        </div>
+                        <span style="font-size: 11px; color: var(--text-muted); display: block; margin-top: 4px;">Atomically shifts journey to this priority and re-indexes all other journeys sequentially. Clamps to max priority if out of bounds.</span>
                     </div>
                 </div>
             </div>
@@ -1070,15 +1136,13 @@
 
                     <h3 style="margin-top: 20px;">Manage Creator Enrolment (Update Status or Remove Creator)</h3>
                     <div class="form-section" style="border: 1px dashed #f59e0b;">
-                        <label>Target Creator (Influencer) ID (UUID)</label>
+                        <label>Target Creator (Influencer) UUID</label>
                         <input type="text" id="update-enrolment-id" placeholder="Paste Creator (Influencer) UUID here">
 
                         <label>New Status</label>
                         <select id="update-enrolment-status">
-                            <option value="ACTIVE">ACTIVE (Resume)</option>
-                            <option value="PAUSED">PAUSED (Pause progress)</option>
-                            <option value="CANCELLED">CANCELLED (Stop journey)</option>
-                            <option value="COMPLETED">COMPLETED</option>
+                            <option value="ACTIVE">ACTIVE (Resume progression)</option>
+                            <option value="PAUSED">PAUSED (Pause progression)</option>
                         </select>
 
                         <div style="display: flex; gap: 8px; margin-top: 10px;">
@@ -1146,6 +1210,10 @@
                 : 'https://movie-repeated-sandstone.ngrok-free.dev/api/v1/admin/subscription-journey'
         );
 
+        function getRootApiUrl() {
+            return BASE_URL.replace(/\/admin\/subscription-journey\/?$/, '');
+        }
+
         function updateBaseUrl(newUrl) {
             if (!newUrl) return;
             BASE_URL = newUrl.trim().replace(/\/+$/, '');
@@ -1181,12 +1249,268 @@
 
         const DEFAULT_ADMIN_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InJvaGFuQGluZmx1aXNoLmNvbSIsImlkIjoiYWQwNTAwMWUtYTZlYi00ZjhlLTliNmYtYjgxOTJkMDhhOGU5IiwiaWF0IjoxNzg4NzcyMDI4fQ.th31Nih-WIR1XnhIYaFMoDoLAmofNuYKHLsPZbxwKd0';
         const DEFAULT_CREATOR_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwaG9uZU51bWJlciI6Iis5MTc4Nzg2NjE0NTEiLCJ1c2VySWQiOiJkYjEwNThiZi1iNTc1LTQzZjEtODk1Ni1lODk5OGI5NmI0OGMiLCJ1c2VyVHlwZSI6ImluZmx1ZW5jZXIiLCJqdGkiOiI2YjdkMDg2Yi1hMGQxLTRjZDMtYmVlZi1kYWE3OTA4NTg1YWUiLCJpYXQiOjE3ODg3NjMwOTR9.yt_PNbXKW5E5mLLtTY2e0AhsJCJ7Oua6_vfU7Sa9_cQ';
-        const DEFAULT_CREATOR_ID = '47246da6-f41b-410a-8349-4600eb0cc466';
+        const DEFAULT_CREATOR_ID = 'db1058bf-b575-43f1-8956-e8998b96b48c';
+
+        function getAdminToken() {
+            return localStorage.getItem('tester_admin_token') || DEFAULT_ADMIN_TOKEN || '';
+        }
+
         const HEADERS = {
             'Content-Type': 'application/json',
             'ngrok-skip-browser-warning': 'true',
-            'Authorization': `Bearer ${DEFAULT_ADMIN_TOKEN}`
+            'Authorization': getAdminToken() ? `Bearer ${getAdminToken()}` : ''
         };
+
+        function setAdminToken(token, persist = true) {
+            const clean = (token || '').trim().replace(/^Bearer\s+/i, '');
+            if (clean) {
+                if (persist) {
+                    localStorage.setItem('tester_admin_token', clean);
+                }
+                HEADERS['Authorization'] = `Bearer ${clean}`;
+            } else {
+                localStorage.removeItem('tester_admin_token');
+                HEADERS['Authorization'] = DEFAULT_ADMIN_TOKEN ? `Bearer ${DEFAULT_ADMIN_TOKEN}` : '';
+            }
+            updateAdminAuthUI();
+        }
+
+        function parseJwtPayload(token) {
+            try {
+                if (!token || typeof token !== 'string') return null;
+                const clean = token.trim().replace(/^Bearer\s+/i, '');
+                const parts = clean.split('.');
+                if (parts.length !== 3) return null;
+                const base64Url = parts[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function updateAdminAuthUI() {
+            const token = getAdminToken();
+            const tokenInput = document.getElementById('admin-token-input');
+            const badge = document.getElementById('admin-auth-badge');
+            const idEl = document.getElementById('token-admin-id');
+            const emailEl = document.getElementById('token-admin-email');
+            const expEl = document.getElementById('token-admin-exp');
+            const statusEl = document.getElementById('token-admin-status');
+
+            if (tokenInput && document.activeElement !== tokenInput) {
+                tokenInput.value = token;
+            }
+
+            if (!token) {
+                if (badge) {
+                    badge.style.background = '#374151';
+                    badge.style.color = '#9ca3af';
+                    badge.innerText = '⚪ Unauthenticated';
+                }
+                if (idEl) idEl.innerText = '--';
+                if (emailEl) emailEl.innerText = '--';
+                if (expEl) expEl.innerText = '--';
+                if (statusEl) {
+                    statusEl.innerText = 'No Token';
+                    statusEl.style.color = '#9ca3af';
+                }
+                return;
+            }
+
+            const payload = parseJwtPayload(token);
+            if (!payload) {
+                if (badge) {
+                    badge.style.background = '#854d0e';
+                    badge.style.color = '#fef08a';
+                    badge.innerText = '🟡 Custom Token Set';
+                }
+                if (idEl) idEl.innerText = '--';
+                if (emailEl) emailEl.innerText = '--';
+                if (expEl) expEl.innerText = '--';
+                if (statusEl) {
+                    statusEl.innerText = 'Custom Format';
+                    statusEl.style.color = '#fef08a';
+                }
+                return;
+            }
+
+            const adminId = payload.id || payload.userId || payload.sub || '--';
+            const email = payload.email || '--';
+            if (idEl) idEl.innerText = adminId;
+            if (emailEl) emailEl.innerText = email;
+
+            if (payload.exp) {
+                const expDate = new Date(payload.exp * 1000);
+                const isExpired = Date.now() >= payload.exp * 1000;
+                const timeStr = expDate.toLocaleString();
+
+                if (isExpired) {
+                    if (expEl) expEl.innerText = `${timeStr} (EXPIRED)`;
+                    if (statusEl) {
+                        statusEl.innerText = 'Expired';
+                        statusEl.style.color = '#ef4444';
+                    }
+                    if (badge) {
+                        badge.style.background = '#7f1d1d';
+                        badge.style.color = '#fca5a5';
+                        badge.innerText = `🔴 Expired: ${email}`;
+                    }
+                } else {
+                    if (expEl) expEl.innerText = timeStr;
+                    if (statusEl) {
+                        statusEl.innerText = 'Active Session';
+                        statusEl.style.color = '#10b981';
+                    }
+                    if (badge) {
+                        badge.style.background = '#065f46';
+                        badge.style.color = '#a7f3d0';
+                        badge.innerText = `🟢 Logged In: ${email}`;
+                    }
+                }
+            } else {
+                if (expEl) expEl.innerText = 'Never (No exp claim)';
+                if (statusEl) {
+                    statusEl.innerText = 'Active (No exp)';
+                    statusEl.style.color = '#10b981';
+                }
+                if (badge) {
+                    badge.style.background = '#065f46';
+                    badge.style.color = '#a7f3d0';
+                    badge.innerText = `🟢 Token: ${email}`;
+                }
+            }
+        }
+
+        async function executeAdminLogin() {
+            const emailInput = document.getElementById('admin-email');
+            const passInput = document.getElementById('admin-password');
+            const btn = document.getElementById('btn-admin-login');
+            const errBox = document.getElementById('admin-login-error');
+
+            const email = emailInput ? emailInput.value.trim() : '';
+            const password = (passInput && passInput.value) ? passInput.value : '12345678';
+
+            if (!email) {
+                showToast('Please enter Admin Email');
+                if (errBox) {
+                    errBox.style.display = 'block';
+                    errBox.innerText = '⚠️ Admin email is required to login.';
+                }
+                return;
+            }
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = '⏳ Logging in...';
+            }
+            if (errBox) errBox.style.display = 'none';
+
+            const rootApiUrl = getRootApiUrl();
+            const loginUrl = `${rootApiUrl}/auth/login`;
+
+            try {
+                console.log(`🔑 Attempting Admin Login via: ${loginUrl}`);
+                const res = await fetch(loginUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'ngrok-skip-browser-warning': 'true'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    const errMsg = data?.message || data?.error || `HTTP ${res.status} Authentication Failed`;
+                    const errText = Array.isArray(errMsg) ? errMsg.join(', ') : errMsg;
+                    if (errBox) {
+                        errBox.style.display = 'block';
+                        errBox.innerText = `❌ Login Error (${res.status}): ${errText}`;
+                    }
+                    showToast(`Login failed: ${errText}`);
+                    return;
+                }
+
+                const token = data?.access_token || data?.data?.access_token || data?.token;
+                if (!token) {
+                    if (errBox) {
+                        errBox.style.display = 'block';
+                        errBox.innerText = '❌ Login failed: Server did not return an access_token in response.';
+                    }
+                    showToast('Login response missing access_token.');
+                    return;
+                }
+
+                // Save token and update headers for all tester requests
+                setAdminToken(token, true);
+                if (errBox) errBox.style.display = 'none';
+                showToast(`✅ Admin logged in successfully: ${email}`);
+
+                // Automatically refresh all tester dropdowns with authenticated session
+                reloadAllTesterData();
+
+            } catch (err) {
+                console.error('Admin login error:', err);
+                if (errBox) {
+                    errBox.style.display = 'block';
+                    errBox.innerText = `❌ Network / CORS error connecting to ${loginUrl}: ${err.message}`;
+                }
+                showToast(`Login error: ${err.message}`);
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = '🔑 Admin Login';
+                }
+            }
+        }
+
+        function saveCustomAdminToken() {
+            const input = document.getElementById('admin-token-input');
+            if (!input) return;
+            const val = input.value.trim();
+            if (!val) {
+                showToast('Please enter a valid JWT token string');
+                return;
+            }
+            setAdminToken(val, true);
+            showToast('Custom admin token applied and saved!');
+            reloadAllTesterData();
+        }
+
+        function copyAdminToken() {
+            const token = getAdminToken();
+            if (!token) {
+                showToast('No token to copy');
+                return;
+            }
+            navigator.clipboard.writeText(token).then(() => {
+                showToast('📋 Token copied to clipboard!');
+            }).catch(() => {
+                showToast('Failed to copy token to clipboard');
+            });
+        }
+
+        function logoutAdmin() {
+            localStorage.removeItem('tester_admin_token');
+            setAdminToken('', false);
+            const passInput = document.getElementById('admin-password');
+            if (passInput) passInput.value = '12345678';
+            const errBox = document.getElementById('admin-login-error');
+            if (errBox) errBox.style.display = 'none';
+            showToast('🚪 Logged out. Stored admin token cleared.');
+            reloadAllTesterData();
+        }
+
+        function toggleTokenDetails() {
+            const drawer = document.getElementById('admin-token-drawer');
+            if (!drawer) return;
+            drawer.style.display = (drawer.style.display === 'none') ? 'block' : 'none';
+        }
 
         let cachedNotificationTemplates = [];
 
@@ -1437,7 +1761,6 @@
                     <div class="detail-item"><span class="detail-label">New Enrolments</span><span class="detail-value">${item.allow_new_enrolments ? 'Allowed' : 'Disallowed'}</span></div>
                     <div class="detail-item"><span class="detail-label">Is Recurring</span><span class="detail-value" style="color: #a7f3d0; font-weight: 600;">${item.is_recurring ? '🔁 YES' : 'NO'}</span></div>
                     <div class="detail-item"><span class="detail-label">Max Repeats</span><span class="detail-value">${item.max_repeat_count !== null && item.max_repeat_count !== undefined ? `${item.max_repeat_count} times` : 'Indefinite (null)'}</span></div>
-                    <div class="detail-item"><span class="detail-label">Version</span><span class="detail-value">v${item.version_number || 1}</span></div>
                     <div class="detail-item"><span class="detail-label">Days Count</span><span class="detail-value">${daysCount !== null ? `${daysCount} Days` : 'Use "Get By ID"'}</span></div>
                     <div class="detail-item"><span class="detail-label">Target Criteria</span><span class="detail-value" style="font-size: 11px;">${escapeHtml(JSON.stringify(item.target_criteria || {}))}</span></div>
                 `;
@@ -1811,7 +2134,7 @@
                                 ${detailRow('Enrolment ID', escapeHtml(enrolment.id || 'N/A'), 'color: #a5b4fc; font-family: monospace; font-size: 11px; font-weight: 600;')}
                                 ${detailRow('Current Day', `Day ${enrolment.current_day_number}`, 'color: #38bdf8; font-weight: 700; font-size: 13px;')}
                                 ${detailRow('Loop Count', (enrolment.loop_count > 0 ? `Loop ${enrolment.loop_count} <span style="font-size: 10px; color: #c084fc; font-weight: 600;">(🔁 Re-cycle)</span>` : '0 (Initial)'))}
-                                ${detailRow('Priority / Version', `P${j.priority ?? '—'} • v${j.version_number || 1}`, 'color: #818cf8; font-weight: 600;')}
+                                ${detailRow('Priority', `P${j.priority ?? '—'}`, 'color: #818cf8; font-weight: 600;')}
                                 ${enrolment.base_subscription_history_id ? detailRow('Base Sub History ID', escapeHtml(enrolment.base_subscription_history_id), 'font-size: 11px; color: #fbbf24; font-family: monospace;') : ''}
                                 ${enrolment.loop_started_at ? detailRow('Loop Started At', fmtDateTime(enrolment.loop_started_at), 'font-size: 11px; color: #c084fc; font-weight: 600;') : ''}
                                 ${detailRow('Enrolled At', fmtDateTime(enrolment.enrolled_at), 'font-size: 11px;')}
@@ -2227,14 +2550,19 @@
         async function getAllPlans() {
             setResponse('plan-response', { loading: true });
             try {
-                const page = document.getElementById('query-page').value || 1;
-                const limit = document.getElementById('query-limit').value || 10;
                 const isActiveFilter = document.getElementById('filter-is-active').value;
+                const planTypeFilter = document.getElementById('filter-plan-type').value;
 
-                let url = `${BASE_URL}/plans?page=${page}&limit=${limit}`;
+                const params = new URLSearchParams();
                 if (isActiveFilter !== '') {
-                    url += `&is_active=${isActiveFilter}`;
+                    params.append('is_active', isActiveFilter);
                 }
+                if (planTypeFilter !== '') {
+                    params.append('plan_type', planTypeFilter);
+                }
+
+                const queryString = params.toString();
+                const url = queryString ? `${BASE_URL}/plans?${queryString}` : `${BASE_URL}/plans`;
 
                 const res = await fetch(url, { headers: HEADERS });
                 const data = await res.json();
@@ -2719,25 +3047,6 @@
                 setResponse('journey-response', { error: err.message });
             }
         }
-
-        async function cloneJourney() {
-            const id = document.getElementById('journey-target-id').value;
-            if(!id) return alert("Please enter a Journey ID to clone!");
-
-            setResponse('journey-response', { loading: true });
-            try {
-                const res = await fetch(`${BASE_URL}/journeys/${id}/clone`, {
-                    method: 'POST',
-                    headers: HEADERS
-                });
-                const data = await res.json();
-                setResponse('journey-response', { status: res.status, data });
-                if(res.ok) loadJourneysDropdown();
-            } catch (err) {
-                setResponse('journey-response', { error: err.message });
-            }
-        }
-
         async function killJourney() {
             const id = document.getElementById('journey-target-id').value;
             if(!id) return alert("Please enter a Journey ID to kill!");
@@ -2769,6 +3078,31 @@
                 const data = await res.json();
                 setResponse('journey-response', { status: res.status, data });
                 if(res.ok) loadJourneysDropdown();
+            } catch (err) {
+                setResponse('journey-response', { error: err.message });
+            }
+        }
+
+        async function reorderJourney() {
+            const id = document.getElementById('journey-target-id').value;
+            if(!id) return alert("Please enter or select a Journey ID to reorder!");
+            const targetPriority = document.getElementById('journey-reorder-priority').value;
+            if(!targetPriority || parseInt(targetPriority, 10) < 1) return alert("Please enter a valid target priority (minimum 1)!");
+
+            setResponse('journey-response', { loading: true });
+            try {
+                const res = await fetch(`${BASE_URL}/journeys/${id}/reorder`, {
+                    method: 'POST',
+                    headers: HEADERS,
+                    body: JSON.stringify({ target_priority: parseInt(targetPriority, 10) })
+                });
+                const data = await res.json();
+                setResponse('journey-response', { status: res.status, data });
+                if(res.ok) {
+                    showToast(data.message || 'Journey reordered successfully!');
+                    getAllJourneys();
+                    loadJourneysDropdown();
+                }
             } catch (err) {
                 setResponse('journey-response', { error: err.message });
             }
@@ -3498,9 +3832,9 @@
         }
 
         async function updateEnrolmentStatus() {
-            const id = document.getElementById('update-enrolment-id').value;
+            const id = document.getElementById('update-enrolment-id').value.trim();
             const newStatus = document.getElementById('update-enrolment-status').value;
-            if(!id) return alert("Please enter an Enrolment UUID!");
+            if(!id) return alert("Please enter a Creator (Influencer) UUID!");
 
             setResponse('enrolment-response', { loading: true });
             try {
@@ -3511,6 +3845,9 @@
                 });
                 const data = await res.json();
                 setResponse('enrolment-response', { status: res.status, data });
+                if (res.ok) {
+                    showToast(`✅ Status updated to ${newStatus}`);
+                }
             } catch (err) {
                 setResponse('enrolment-response', { error: err.message });
             }
@@ -3590,7 +3927,7 @@
 
         async function fetchInfluencerSubscription(influencerId) {
             try {
-                const rootApiUrl = BASE_URL.replace('/admin/subscription-journey', '');
+                const rootApiUrl = getRootApiUrl();
                 const res = await fetch(`${rootApiUrl}/subscriptions/influencer/${influencerId}`, { headers: HEADERS });
                 const data = await res.json();
                 const historyList = data?.data || [];
@@ -3610,7 +3947,7 @@
 
             setResponse('enrolment-response', { loading: true });
 
-            const rootApiUrl = BASE_URL.replace('/admin/subscription-journey', '');
+            const rootApiUrl = getRootApiUrl();
 
             if (!inputVal) {
                 return alert("Please enter an Influencer Bearer Token or Influencer User ID!");
@@ -3725,7 +4062,7 @@
 
             setResponse('enrolment-response', { loading: true });
             try {
-                const rootApiUrl = BASE_URL.replace('/admin/subscription-journey', '');
+                const rootApiUrl = getRootApiUrl();
                 const res = await fetch(`${rootApiUrl}/subscriptions/admin/de-activate/${subId}`, {
                     method: 'DELETE',
                     headers: HEADERS
@@ -3742,7 +4079,7 @@
             const select = document.getElementById('offer-plan-id');
             if(!select) return;
             try {
-                const res = await fetch(`${BASE_URL}/plans?limit=100`, { headers: HEADERS });
+                const res = await fetch(`${BASE_URL}/plans`, { headers: HEADERS });
                 const data = await res.json();
                 const plans = (data && data.data) ? data.data : (Array.isArray(data) ? data : []);
                 
@@ -3812,7 +4149,7 @@
                         journeys.forEach(j => {
                             const opt = document.createElement('option');
                             opt.value = j.id;
-                            opt.textContent = `${j.name} (Priority: ${j.priority}, v${j.version_number}) — [${j.id.substring(0,8)}...]`;
+                            opt.textContent = `${j.name} (Priority: ${j.priority}) — [${j.id.substring(0,8)}...]`;
                             select.appendChild(opt);
                         });
                         if (prevVal && journeys.some(j => j.id === prevVal)) {
@@ -3901,6 +4238,7 @@
             const baseInput = document.getElementById('config-base-url');
             if (baseInput) baseInput.value = BASE_URL;
             initDefaultCreatorIds();
+            updateAdminAuthUI();
             reloadAllTesterData();
             toggleFixedRangeInputs();
             togglePlanDurationDaysVisibility();
