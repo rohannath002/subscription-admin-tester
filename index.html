@@ -358,11 +358,11 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end;">
                 <div>
                     <label style="font-size: 12px; color: #94a3b8; margin-bottom: 4px; display: block;">Admin Email (POST /api/v1/auth/login)</label>
-                    <input type="email" id="admin-email" placeholder="admin@influish.com" value="rohan@influish.com" style="width: 100%; box-sizing: border-box; padding: 7px 10px; font-size: 13px; background: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 6px;">
+                    <input type="email" id="admin-email" placeholder="admin@influish.com" style="width: 100%; box-sizing: border-box; padding: 7px 10px; font-size: 13px; background: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 6px;">
                 </div>
                 <div>
                     <label style="font-size: 12px; color: #94a3b8; margin-bottom: 4px; display: block;">Password</label>
-                    <input type="password" id="admin-password" placeholder="Enter admin password" value="12345678" style="width: 100%; box-sizing: border-box; padding: 7px 10px; font-size: 13px; background: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 6px;" onkeydown="if(event.key==='Enter') executeAdminLogin()">
+                    <input type="password" id="admin-password" placeholder="Enter admin password" style="width: 100%; box-sizing: border-box; padding: 7px 10px; font-size: 13px; background: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 6px;" onkeydown="if(event.key==='Enter') executeAdminLogin()">
                 </div>
                 <div>
                     <button type="button" id="btn-admin-login" class="btn" style="padding: 8px 18px; font-size: 13px; background: #2563eb; font-weight: 600; white-space: nowrap;" onclick="executeAdminLogin()">
@@ -375,7 +375,7 @@
             <div id="admin-token-drawer" style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed #1e3a8a;">
                 <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
                     <label style="font-size: 12px; color: #94a3b8; margin: 0; white-space: nowrap; font-weight: 600;">Active Bearer Token:</label>
-                    <input type="text" id="admin-token-input" placeholder="Bearer JWT Token..." style="flex: 1; padding: 6px 10px; font-size: 12px; font-family: monospace; background: #0f172a; color: #a5f3fc; border: 1px solid #334155; border-radius: 6px;">
+                    <input type="password" id="admin-token-input" placeholder="Bearer JWT Token..." style="flex: 1; padding: 6px 10px; font-size: 12px; font-family: monospace; background: #0f172a; color: #a5f3fc; border: 1px solid #334155; border-radius: 6px;">
                     <button type="button" class="btn" style="padding: 5px 12px; font-size: 12px; background: #059669;" onclick="saveCustomAdminToken()">💾 Apply Token</button>
                     <button type="button" class="btn" style="padding: 5px 12px; font-size: 12px; background: #475569;" onclick="copyAdminToken()">📋 Copy</button>
                 </div>
@@ -386,6 +386,76 @@
                     <span>🛡️ Session: <strong id="token-admin-status" style="color: #10b981;">--</strong></span>
                 </div>
                 <div id="admin-login-error" style="display: none; margin-top: 8px; padding: 8px 12px; background: #450a0a; border: 1px solid #7f1d1d; border-radius: 6px; color: #fca5a5; font-size: 12px;"></div>
+            </div>
+        </div>
+
+        <!-- CREATOR AUTHENTICATION (OTP) PANEL -->
+        <div class="section" id="creator-auth-section" style="background: #0f172a; border: 1px solid #065f46; border-radius: 8px; padding: 16px 20px; margin-bottom: 25px; box-shadow: 0 4px 14px rgba(0,0,0,0.3);">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <h3 style="margin: 0; font-size: 16px; color: #6ee7b7; display: flex; align-items: center; gap: 8px;">
+                        📱 Creator Authentication (OTP Login)
+                    </h3>
+                    <span id="creator-auth-badge" style="font-size: 12px; padding: 3px 10px; border-radius: 12px; background: #374151; color: #9ca3af; font-weight: 600;">⚪ Not Logged In</span>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button type="button" class="btn" style="padding: 4px 10px; font-size: 12px; background: #334155;" onclick="toggleCreatorTokenDetails()">🔍 Toggle Token Details</button>
+                    <button type="button" class="btn" style="padding: 4px 10px; font-size: 12px; background: #dc2626;" onclick="logoutCreator()">🚪 Logout / Reset</button>
+                </div>
+            </div>
+
+            <!-- Step A: Request OTP -->
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: end; margin-bottom: 12px;">
+                <div>
+                    <label style="font-size: 12px; color: #94a3b8; margin-bottom: 4px; display: block;">Creator Mobile Number (POST /auth/request-otp)</label>
+                    <input type="text" id="creator-phone" placeholder="+91XXXXXXXXXX" style="width: 100%; box-sizing: border-box; padding: 7px 10px; font-size: 13px; background: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 6px;">
+                </div>
+                <div>
+                    <button type="button" class="btn btn-secondary" style="padding: 8px 18px; font-size: 13px; font-weight: 600; white-space: nowrap;" onclick="requestCreatorOtp()">📨 Request OTP</button>
+                </div>
+            </div>
+
+            <!-- Step B: Verify OTP -->
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: end; margin-bottom: 12px;">
+                <div>
+                    <label style="font-size: 12px; color: #94a3b8; margin-bottom: 4px; display: block;">OTP Code (POST /auth/verify-otp)</label>
+                    <input type="text" id="creator-otp" placeholder="Enter OTP received" style="width: 100%; box-sizing: border-box; padding: 7px 10px; font-size: 13px; background: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 6px;" onkeydown="if(event.key==='Enter') verifyCreatorOtp()">
+                </div>
+                <div>
+                    <button type="button" id="btn-creator-verify" class="btn" style="padding: 8px 18px; font-size: 13px; background: #2563eb; font-weight: 600; white-space: nowrap;" onclick="verifyCreatorOtp()">✅ Verify OTP &amp; Login</button>
+                </div>
+            </div>
+
+            <!-- Token Management & Decoded Details Drawer -->
+            <div id="creator-token-drawer" style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed #065f46;">
+                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
+                    <label style="font-size: 12px; color: #94a3b8; margin: 0; white-space: nowrap; font-weight: 600;">Active Creator Bearer Token:</label>
+                    <input type="password" id="creator-token-input" placeholder="Bearer JWT Token..." style="flex: 1; padding: 6px 10px; font-size: 12px; font-family: monospace; background: #0f172a; color: #a5f3fc; border: 1px solid #334155; border-radius: 6px;">
+                    <button type="button" class="btn" style="padding: 5px 12px; font-size: 12px; background: #059669;" onclick="saveCustomCreatorToken()">💾 Apply Token</button>
+                    <button type="button" class="btn" style="padding: 5px 12px; font-size: 12px; background: #475569;" onclick="copyCreatorToken()">📋 Copy</button>
+                </div>
+                <div id="creator-session-info" style="font-size: 12px; color: #94a3b8; display: flex; flex-wrap: wrap; gap: 16px; padding: 8px 12px; background: #0f172a; border-radius: 6px; border: 1px solid #1e293b;">
+                    <span>👤 Creator ID: <strong id="token-creator-id" style="color: #f8fafc;">--</strong></span>
+                    <span>📱 Mobile: <strong id="token-creator-phone" style="color: #f8fafc;">--</strong></span>
+                    <span>⏰ Expires: <strong id="token-creator-exp" style="color: #f8fafc;">--</strong></span>
+                    <span>🛡️ Session: <strong id="token-creator-status" style="color: #10b981;">--</strong></span>
+                </div>
+                <div id="creator-auth-error" style="display: none; margin-top: 8px; padding: 8px 12px; background: #450a0a; border: 1px solid #7f1d1d; border-radius: 6px; color: #fca5a5; font-size: 12px;"></div>
+            </div>
+
+            <!-- Step C: Get Profile -->
+            <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed #065f46;">
+                <button type="button" class="btn" style="padding: 8px 18px; font-size: 13px; background: #10b981; font-weight: 600;" onclick="getCreatorProfile()">👤 Get My Profile (GET /auth/influencer/me)</button>
+            </div>
+
+            <h3 style="margin-top: 20px; font-size: 14px; color: var(--text-muted);">Formatted Profile View:</h3>
+            <div id="creator-auth-list" class="response-list-view"></div>
+            <div class="json-toggle-bar">
+                <h3 style="margin: 0; font-size: 14px; color: var(--text-muted);">Raw JSON Response:</h3>
+                <button class="btn-json-toggle" onclick="toggleRawJson('creator-auth-response', this)">▶ Expand Raw JSON</button>
+            </div>
+            <div id="wrapper-creator-auth-response" class="raw-json-wrapper">
+                <pre id="creator-auth-response">// Awaiting your action...</pre>
             </div>
         </div>
 
@@ -577,10 +647,6 @@
                                     <option value="true">True</option>
                                     <option value="false">False</option>
                                 </select>
-                            </div>
-                            <div>
-                                <label>Max Pause Mins</label>
-                                <input type="number" id="offer-max-pause" value="5">
                             </div>
                             <div>
                                 <label>Max Claims Per User</label>
@@ -1247,9 +1313,7 @@
             }
         }
 
-        const DEFAULT_ADMIN_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InJvaGFuQGluZmx1aXNoLmNvbSIsImlkIjoiYWQwNTAwMWUtYTZlYi00ZjhlLTliNmYtYjgxOTJkMDhhOGU5IiwiaWF0IjoxNzg4NzcyMDI4fQ.th31Nih-WIR1XnhIYaFMoDoLAmofNuYKHLsPZbxwKd0';
-        const DEFAULT_CREATOR_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwaG9uZU51bWJlciI6Iis5MTc4Nzg2NjE0NTEiLCJ1c2VySWQiOiJkYjEwNThiZi1iNTc1LTQzZjEtODk1Ni1lODk5OGI5NmI0OGMiLCJ1c2VyVHlwZSI6ImluZmx1ZW5jZXIiLCJqdGkiOiI2YjdkMDg2Yi1hMGQxLTRjZDMtYmVlZi1kYWE3OTA4NTg1YWUiLCJpYXQiOjE3ODg3NjMwOTR9.yt_PNbXKW5E5mLLtTY2e0AhsJCJ7Oua6_vfU7Sa9_cQ';
-        const DEFAULT_CREATOR_ID = 'db1058bf-b575-43f1-8956-e8998b96b48c';
+        const DEFAULT_ADMIN_TOKEN = '';
 
         function getAdminToken() {
             return localStorage.getItem('tester_admin_token') || DEFAULT_ADMIN_TOKEN || '';
@@ -1392,7 +1456,7 @@
             const errBox = document.getElementById('admin-login-error');
 
             const email = emailInput ? emailInput.value.trim() : '';
-            const password = (passInput && passInput.value) ? passInput.value : '12345678';
+            const password = (passInput && passInput.value) ? passInput.value : '';
 
             if (!email) {
                 showToast('Please enter Admin Email');
@@ -1499,7 +1563,7 @@
             localStorage.removeItem('tester_admin_token');
             setAdminToken('', false);
             const passInput = document.getElementById('admin-password');
-            if (passInput) passInput.value = '12345678';
+            if (passInput) passInput.value = '';
             const errBox = document.getElementById('admin-login-error');
             if (errBox) errBox.style.display = 'none';
             showToast('🚪 Logged out. Stored admin token cleared.');
@@ -1510,6 +1574,323 @@
             const drawer = document.getElementById('admin-token-drawer');
             if (!drawer) return;
             drawer.style.display = (drawer.style.display === 'none') ? 'block' : 'none';
+        }
+
+        // --- CREATOR (INFLUENCER) OTP AUTHENTICATION HANDLERS ---
+        function getCreatorToken() {
+            return localStorage.getItem('tester_creator_token') || '';
+        }
+
+        function setCreatorToken(token, persist = true) {
+            const clean = (token || '').trim().replace(/^Bearer\s+/i, '');
+            if (clean) {
+                if (persist) localStorage.setItem('tester_creator_token', clean);
+            } else {
+                localStorage.removeItem('tester_creator_token');
+            }
+            updateCreatorAuthUI();
+            populateVerifiedCreatorIds();
+        }
+
+        function updateCreatorAuthUI() {
+            const token = getCreatorToken();
+            const tokenInput = document.getElementById('creator-token-input');
+            const badge = document.getElementById('creator-auth-badge');
+            const idEl = document.getElementById('token-creator-id');
+            const phoneEl = document.getElementById('token-creator-phone');
+            const expEl = document.getElementById('token-creator-exp');
+            const statusEl = document.getElementById('token-creator-status');
+
+            if (tokenInput && document.activeElement !== tokenInput) {
+                tokenInput.value = token;
+            }
+
+            if (!token) {
+                if (badge) {
+                    badge.style.background = '#374151';
+                    badge.style.color = '#9ca3af';
+                    badge.innerText = '⚪ Not Logged In';
+                }
+                if (idEl) idEl.innerText = '--';
+                if (phoneEl) phoneEl.innerText = '--';
+                if (expEl) expEl.innerText = '--';
+                if (statusEl) {
+                    statusEl.innerText = 'No Token';
+                    statusEl.style.color = '#9ca3af';
+                }
+                return;
+            }
+
+            const payload = parseJwtPayload(token);
+            if (!payload) {
+                if (badge) {
+                    badge.style.background = '#854d0e';
+                    badge.style.color = '#fef08a';
+                    badge.innerText = '🟡 Custom Token Set';
+                }
+                if (idEl) idEl.innerText = '--';
+                if (phoneEl) phoneEl.innerText = '--';
+                if (expEl) expEl.innerText = '--';
+                if (statusEl) {
+                    statusEl.innerText = 'Custom Format';
+                    statusEl.style.color = '#fef08a';
+                }
+                return;
+            }
+
+            const creatorId = payload.userId || payload.id || payload.sub || '--';
+            const phone = payload.phoneNumber || '--';
+            if (idEl) idEl.innerText = creatorId;
+            if (phoneEl) phoneEl.innerText = phone;
+
+            if (payload.exp) {
+                const expDate = new Date(payload.exp * 1000);
+                const isExpired = Date.now() >= payload.exp * 1000;
+                const timeStr = expDate.toLocaleString();
+
+                if (isExpired) {
+                    if (expEl) expEl.innerText = `${timeStr} (EXPIRED)`;
+                    if (statusEl) {
+                        statusEl.innerText = 'Expired';
+                        statusEl.style.color = '#ef4444';
+                    }
+                    if (badge) {
+                        badge.style.background = '#7f1d1d';
+                        badge.style.color = '#fca5a5';
+                        badge.innerText = `🔴 Expired: ${phone}`;
+                    }
+                } else {
+                    if (expEl) expEl.innerText = timeStr;
+                    if (statusEl) {
+                        statusEl.innerText = 'Active Session';
+                        statusEl.style.color = '#10b981';
+                    }
+                    if (badge) {
+                        badge.style.background = '#065f46';
+                        badge.style.color = '#a7f3d0';
+                        badge.innerText = `🟢 Logged In: ${phone}`;
+                    }
+                }
+            } else {
+                if (expEl) expEl.innerText = 'Never (No exp claim)';
+                if (statusEl) {
+                    statusEl.innerText = 'Active (No exp)';
+                    statusEl.style.color = '#10b981';
+                }
+                if (badge) {
+                    badge.style.background = '#065f46';
+                    badge.style.color = '#a7f3d0';
+                    badge.innerText = `🟢 Token: ${phone}`;
+                }
+            }
+        }
+
+        function normalizeCreatorPhone(raw) {
+            const trimmed = (raw || '').trim();
+            if (!trimmed) return '';
+            return trimmed.startsWith('+') ? trimmed : `+91${trimmed}`;
+        }
+
+        async function requestCreatorOtp() {
+            const phoneInput = document.getElementById('creator-phone');
+            const phone = phoneInput ? normalizeCreatorPhone(phoneInput.value) : '';
+            const errBox = document.getElementById('creator-auth-error');
+
+            if (!phone) {
+                showToast('Please enter a mobile number');
+                if (errBox) {
+                    errBox.style.display = 'block';
+                    errBox.innerText = '⚠️ Mobile number is required.';
+                }
+                return;
+            }
+            if (phoneInput) phoneInput.value = phone;
+            if (errBox) errBox.style.display = 'none';
+
+            setResponse('creator-auth-response', { loading: true });
+            const rootApiUrl = getRootApiUrl();
+            const url = `${rootApiUrl}/auth/request-otp`;
+
+            try {
+                console.log(`📨 Requesting Creator OTP via: ${url}`);
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'ngrok-skip-browser-warning': 'true'
+                    },
+                    body: JSON.stringify({ phoneNumber: phone })
+                });
+                const data = await res.json();
+                setResponse('creator-auth-response', { status: res.status, data });
+
+                if (!res.ok) {
+                    const errMsg = data?.message || data?.error || `HTTP ${res.status} OTP Request Failed`;
+                    const errText = Array.isArray(errMsg) ? errMsg.join(', ') : errMsg;
+                    if (errBox) {
+                        errBox.style.display = 'block';
+                        errBox.innerText = `❌ OTP Request Error (${res.status}): ${errText}`;
+                    }
+                    showToast(`OTP request failed: ${errText}`);
+                    return;
+                }
+
+                showToast(`✅ OTP requested for ${phone}`);
+                if (data?.otp) {
+                    const otpInput = document.getElementById('creator-otp');
+                    if (otpInput) otpInput.value = data.otp;
+                    showToast(`🔑 Dev OTP auto-filled: ${data.otp}`);
+                }
+            } catch (err) {
+                console.error('Request OTP error:', err);
+                setResponse('creator-auth-response', { error: err.message });
+                if (errBox) {
+                    errBox.style.display = 'block';
+                    errBox.innerText = `❌ Network / CORS error connecting to ${url}: ${err.message}`;
+                }
+            }
+        }
+
+        async function verifyCreatorOtp() {
+            const phoneInput = document.getElementById('creator-phone');
+            const otpInput = document.getElementById('creator-otp');
+            const phone = phoneInput ? normalizeCreatorPhone(phoneInput.value) : '';
+            const otp = otpInput ? otpInput.value.trim() : '';
+            const errBox = document.getElementById('creator-auth-error');
+            const btn = document.getElementById('btn-creator-verify');
+
+            if (!phone) return alert('Please enter a mobile number first!');
+            if (!otp) return alert('Please enter the OTP received!');
+
+            if (phoneInput) phoneInput.value = phone;
+            if (errBox) errBox.style.display = 'none';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = '⏳ Verifying...';
+            }
+
+            setResponse('creator-auth-response', { loading: true });
+            const rootApiUrl = getRootApiUrl();
+            const url = `${rootApiUrl}/auth/verify-otp`;
+
+            try {
+                console.log(`✅ Verifying Creator OTP via: ${url}`);
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'ngrok-skip-browser-warning': 'true'
+                    },
+                    body: JSON.stringify({ phoneNumber: phone, otp })
+                });
+                const data = await res.json();
+                setResponse('creator-auth-response', { status: res.status, data });
+
+                if (!res.ok) {
+                    const errMsg = data?.message || data?.error || `HTTP ${res.status} OTP Verify Failed`;
+                    const errText = Array.isArray(errMsg) ? errMsg.join(', ') : errMsg;
+                    if (errBox) {
+                        errBox.style.display = 'block';
+                        errBox.innerText = `❌ OTP Verify Error (${res.status}): ${errText}`;
+                    }
+                    showToast(`OTP verify failed: ${errText}`);
+                    return;
+                }
+
+                const token = data?.access_token;
+                if (!token) {
+                    if (errBox) {
+                        errBox.style.display = 'block';
+                        errBox.innerText = '❌ Verify succeeded but no access_token was returned.';
+                    }
+                    showToast('Verify response missing access_token.');
+                    return;
+                }
+
+                setCreatorToken(token, true);
+                showToast(`✅ Creator logged in successfully: ${phone}`);
+            } catch (err) {
+                console.error('Verify OTP error:', err);
+                setResponse('creator-auth-response', { error: err.message });
+                if (errBox) {
+                    errBox.style.display = 'block';
+                    errBox.innerText = `❌ Network / CORS error connecting to ${url}: ${err.message}`;
+                }
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = '✅ Verify OTP & Login';
+                }
+            }
+        }
+
+        function saveCustomCreatorToken() {
+            const input = document.getElementById('creator-token-input');
+            if (!input) return;
+            const val = input.value.trim();
+            if (!val) {
+                showToast('Please enter a valid JWT token string');
+                return;
+            }
+            setCreatorToken(val, true);
+            showToast('Custom creator token applied and saved!');
+        }
+
+        function copyCreatorToken() {
+            const token = getCreatorToken();
+            if (!token) {
+                showToast('No token to copy');
+                return;
+            }
+            navigator.clipboard.writeText(token).then(() => {
+                showToast('📋 Creator token copied to clipboard!');
+            }).catch(() => {
+                showToast('Failed to copy creator token to clipboard');
+            });
+        }
+
+        function logoutCreator() {
+            localStorage.removeItem('tester_creator_token');
+            setCreatorToken('', false);
+            const otpInput = document.getElementById('creator-otp');
+            if (otpInput) otpInput.value = '';
+            const errBox = document.getElementById('creator-auth-error');
+            if (errBox) errBox.style.display = 'none';
+            showToast('🚪 Logged out. Stored creator token cleared.');
+        }
+
+        function toggleCreatorTokenDetails() {
+            const drawer = document.getElementById('creator-token-drawer');
+            if (!drawer) return;
+            drawer.style.display = (drawer.style.display === 'none') ? 'block' : 'none';
+        }
+
+        async function getCreatorProfile() {
+            const token = getCreatorToken();
+            if (!token) return alert('Please verify OTP or apply a creator bearer token first!');
+
+            setResponse('creator-auth-response', { loading: true });
+            const rootApiUrl = getRootApiUrl();
+            const url = `${rootApiUrl}/auth/influencer/me`;
+
+            try {
+                console.log(`👤 Fetching creator profile via: ${url}`);
+                const res = await fetch(url, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'ngrok-skip-browser-warning': 'true',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                const data = await res.json();
+                setResponse('creator-auth-response', { status: res.status, data });
+                if (res.ok) {
+                    showToast('✅ Creator profile fetched successfully!');
+                }
+            } catch (err) {
+                console.error('Get creator profile error:', err);
+                setResponse('creator-auth-response', { error: err.message });
+            }
         }
 
         let cachedNotificationTemplates = [];
@@ -1750,7 +2131,6 @@
                     <div class="detail-item"><span class="detail-label">Benefit</span><span class="detail-value" style="color: #fbbf24; font-weight: 700;">${item.benefit_type}: ${item.benefit_value}</span></div>
                     <div class="detail-item"><span class="detail-label">Offer Life</span><span class="detail-value" style="color: #60a5fa; font-weight: 600;">${item.offer_life_value !== undefined && item.offer_life_value !== null ? `${item.offer_life_value} ${item.offer_life_unit || ''}` : 'N/A'}</span></div>
                     <div class="detail-item"><span class="detail-label">Coupon Window</span><span class="detail-value">${item.coupon_duration_minutes !== undefined && item.coupon_duration_minutes !== null ? `${item.coupon_duration_minutes} mins` : 'N/A'}</span></div>
-                    <div class="detail-item"><span class="detail-label">Max Pause</span><span class="detail-value">${item.max_pause_minutes !== undefined && item.max_pause_minutes !== null ? `${item.max_pause_minutes} mins` : 'N/A'}</span></div>
                     <div class="detail-item"><span class="detail-label">Max Per User</span><span class="detail-value">${item.max_per_user || 'Unlimited'}</span></div>
                     <div class="detail-item"><span class="detail-label">Linked Plan ID</span><span class="detail-value">${item.plan_id ? `<span class="item-id-pill" onclick="copyAndFill('${item.plan_id}', 'plan-target-id', 'Plan ID')">${item.plan_id.substring(0, 8)}...</span>` : 'None'}</span></div>
                 `;
@@ -2735,7 +3115,6 @@
                     validity_type: document.getElementById('offer-validity-type').value,
                     valid_from: (document.getElementById('offer-validity-type').value === 'FIXED_RANGE' || document.getElementById('offer-validity-type').value === 'BOTH') && document.getElementById('offer-valid-from').value ? new Date(document.getElementById('offer-valid-from').value).toISOString() : undefined,
                     valid_until: (document.getElementById('offer-validity-type').value === 'FIXED_RANGE' || document.getElementById('offer-validity-type').value === 'BOTH') && document.getElementById('offer-valid-until').value ? new Date(document.getElementById('offer-valid-until').value).toISOString() : undefined,
-                    max_pause_minutes: parseInt(document.getElementById('offer-max-pause').value),
                     coupon_duration_minutes: parseInt(document.getElementById('offer-coupon-duration').value) || undefined,
                     offer_life_value: parseInt(document.getElementById('offer-life-val').value) || undefined,
                     offer_life_unit: document.getElementById('offer-life-unit').value || undefined,
@@ -2809,9 +3188,6 @@
                     const elValidityType = document.getElementById('offer-validity-type');
                     if (elValidityType && o.validity_type) elValidityType.value = o.validity_type;
 
-                    const elMaxPause = document.getElementById('offer-max-pause');
-                    if (elMaxPause && o.max_pause_minutes !== undefined) elMaxPause.value = o.max_pause_minutes;
-
                     const elMaxPerUser = document.getElementById('offer-max-per-user');
                     if (elMaxPerUser && o.max_per_user !== undefined) elMaxPerUser.value = o.max_per_user === null ? 'null' : o.max_per_user;
 
@@ -2851,7 +3227,6 @@
                     validity_type: validityType || undefined,
                     valid_from: (validityType === 'FIXED_RANGE' || validityType === 'BOTH') && document.getElementById('offer-valid-from')?.value ? new Date(document.getElementById('offer-valid-from').value).toISOString() : undefined,
                     valid_until: (validityType === 'FIXED_RANGE' || validityType === 'BOTH') && document.getElementById('offer-valid-until')?.value ? new Date(document.getElementById('offer-valid-until').value).toISOString() : undefined,
-                    max_pause_minutes: parseInt(document.getElementById('offer-max-pause')?.value) || undefined,
                     coupon_duration_minutes: parseInt(document.getElementById('offer-coupon-duration')?.value) || undefined,
                     offer_life_value: parseInt(document.getElementById('offer-life-val')?.value) || undefined,
                     offer_life_unit: document.getElementById('offer-life-unit')?.value || undefined,
@@ -4220,7 +4595,13 @@
             }
         }
 
-        function initDefaultCreatorIds() {
+        function getVerifiedCreatorId() {
+            const payload = parseJwtPayload(getCreatorToken());
+            return payload ? (payload.userId || payload.id || payload.sub || '') : '';
+        }
+
+        function populateVerifiedCreatorIds() {
+            const creatorId = getVerifiedCreatorId();
             const creatorInputIds = [
                 'manual-creator-id',
                 'update-enrolment-id',
@@ -4230,15 +4611,16 @@
             ];
             creatorInputIds.forEach(id => {
                 const el = document.getElementById(id);
-                if (el) el.value = DEFAULT_CREATOR_ID;
+                if (el) el.value = creatorId;
             });
         }
 
         window.addEventListener('DOMContentLoaded', () => {
             const baseInput = document.getElementById('config-base-url');
             if (baseInput) baseInput.value = BASE_URL;
-            initDefaultCreatorIds();
+            populateVerifiedCreatorIds();
             updateAdminAuthUI();
+            updateCreatorAuthUI();
             reloadAllTesterData();
             toggleFixedRangeInputs();
             togglePlanDurationDaysVisibility();
