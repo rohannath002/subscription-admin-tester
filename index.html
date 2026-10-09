@@ -333,6 +333,7 @@
             </div>
             <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                 <button type="button" class="btn" style="padding: 5px 12px; font-size: 12px; background: #2563eb;" onclick="setEndpointPreset('http://localhost:3000/api/v1/admin/subscription-journey')">💻 Localhost:3000</button>
+                <button type="button" class="btn" style="padding: 5px 12px; font-size: 12px; background: #059669;" onclick="setEndpointPreset('https://dev-backend.influish.com')">🌐 Dev (dev-backend)</button>
                 <button type="button" class="btn" style="padding: 5px 12px; font-size: 12px; background: #475569;" onclick="setEndpointPreset('https://movie-repeated-sandstone.ngrok-free.dev/api/v1/admin/subscription-journey')">☁️ Ngrok</button>
                 <button type="button" class="btn btn-secondary" style="padding: 5px 12px; font-size: 12px;" onclick="reloadAllTesterData()">🔄 Reload All Dropdowns</button>
                 <span id="api-status-badge" style="font-size: 12px; padding: 4px 10px; border-radius: 12px; background: #374151; color: #9ca3af; font-weight: 600;">⚪ Checking...</span>
@@ -1282,7 +1283,15 @@
 
         function updateBaseUrl(newUrl) {
             if (!newUrl) return;
-            BASE_URL = newUrl.trim().replace(/\/+$/, '');
+            let clean = newUrl.trim().replace(/\/+$/, '');
+            if (!clean.includes('/admin/subscription-journey')) {
+                if (!clean.includes('/api/v1')) {
+                    clean += '/api/v1/admin/subscription-journey';
+                } else {
+                    clean += '/admin/subscription-journey';
+                }
+            }
+            BASE_URL = clean;
             localStorage.setItem('tester_base_url', BASE_URL);
             const input = document.getElementById('config-base-url');
             if (input) input.value = BASE_URL;
@@ -2145,13 +2154,9 @@
                     <div class="detail-item"><span class="detail-label">Target Criteria</span><span class="detail-value" style="font-size: 11px;">${escapeHtml(JSON.stringify(item.target_criteria || {}))}</span></div>
                 `;
             } else if (isDay) {
-                const abTask = Array.isArray(item.tasks) ? item.tasks.find(t => t.task_type === 'TRACK_ABANDONMENT') : null;
-                const abLabel = item.is_abandonment_day
-                    ? (abTask && abTask.delay_minutes !== undefined && abTask.delay_minutes !== null ? `⚡ ENABLED (${abTask.delay_minutes}-Min)` : '⚡ ENABLED')
-                    : 'Disabled';
                 detailsHtml += `
                     <div class="detail-item"><span class="detail-label">Day Number</span><span class="detail-value" style="color: #38bdf8; font-weight: 700;">Day ${item.day_number}</span></div>
-                    <div class="detail-item"><span class="detail-label">Abandonment Watcher</span><span class="detail-value">${abLabel}</span></div>
+                    <div class="detail-item"><span class="detail-label">Abandonment Watcher</span><span class="detail-value">${item.is_abandonment_day ? '⚡ ENABLED (4-Min)' : 'Disabled'}</span></div>
                     <div class="detail-item"><span class="detail-label">Repeat Interval</span><span class="detail-value" style="color: #fde047; font-weight: 600;">${item.repeat_interval_days !== null && item.repeat_interval_days !== undefined ? `Every ${item.repeat_interval_days} Days` : 'None (1-time)'}</span></div>
                     <div class="detail-item"><span class="detail-label">Max Repeat Count</span><span class="detail-value">${item.max_repeat_count !== null && item.max_repeat_count !== undefined ? `${item.max_repeat_count} times` : 'Indefinite (null)'}</span></div>
                     <div class="detail-item"><span class="detail-label">Tasks Count</span><span class="detail-value">${item.tasks ? item.tasks.length : 0} Tasks</span></div>
