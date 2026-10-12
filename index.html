@@ -1218,6 +1218,16 @@
                         </div>
                     </div>
 
+                    <h3 style="margin-top: 20px; color: #f87171;">🗑️ Remove ALL Creators From a Journey (Bulk, batches of 500)</h3>
+                    <div class="form-section" style="border: 1px dashed #dc2626;">
+                        <label>Target Journey</label>
+                        <select id="remove-all-journey-id">
+                            <option value="">-- Select Journey --</option>
+                        </select>
+                        <p style="font-size: 11px; opacity: 0.8; margin: 6px 0 0;">Archives every enrolment in the journey to history, skips pending task logs and kills pending/claimed offers. Large journeys may take minutes; a timeout does not stop the server, re-check the enrolment list.</p>
+                        <button class="btn" style="margin-top: 10px; background: #dc2626; width: 100%;" onclick="removeAllCreatorsFromJourney()">Remove All Creators From Journey</button>
+                    </div>
+
                     <h3 style="margin-top: 20px; color: #818cf8;">⚡ Fast-Forward Creator Journey Day (Testing Override)</h3>
                     <div class="form-section" style="border: 1px dashed #6366f1;">
                         <label>Target Creator (Influencer) UUID</label>
@@ -4256,6 +4266,28 @@
             }
         }
 
+        async function removeAllCreatorsFromJourney() {
+            const sel = document.getElementById('remove-all-journey-id');
+            const journeyId = sel.value;
+            if(!journeyId) return alert("Please select a journey first!");
+
+            const name = sel.options[sel.selectedIndex].text;
+            if(!confirm(`Remove ALL enrolled creators from journey "${name}"?\n\nThis archives every enrolment, skips pending tasks and kills pending offers.`)) return;
+
+            setResponse('enrolment-response', { loading: true });
+            const started = Date.now();
+            try {
+                const res = await fetch(`${BASE_URL}/enrolments/journey/${journeyId}`, {
+                    method: 'DELETE',
+                    headers: HEADERS
+                });
+                const data = await res.json();
+                setResponse('enrolment-response', { status: res.status, elapsed_ms: Date.now() - started, data });
+            } catch (err) {
+                setResponse('enrolment-response', { error: err.message, elapsed_ms: Date.now() - started, note: 'Request may have timed out; the server may still be processing. Re-check the enrolment list.' });
+            }
+        }
+
         async function advanceCreatorDay() {
             const influencerId = document.getElementById('advance-creator-id').value.trim();
             if(!influencerId) return alert("Please enter a Creator (Influencer) UUID to advance day!");
@@ -4491,6 +4523,7 @@
                 document.getElementById('enrolment-journey-id'),
                 document.getElementById('manual-journey-id'),
                 document.getElementById('enrolment-query-journey-id'),
+                document.getElementById('remove-all-journey-id'),
                 document.getElementById('audit-query-journey-id')
             ];
             const badge = document.getElementById('api-status-badge');
