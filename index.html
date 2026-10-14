@@ -1009,7 +1009,7 @@
                             </div>
                             <div>
                                 <label>Task Type</label>
-                                <select id="edit-task-type">
+                                <select id="edit-task-type" onchange="syncEditTaskAbandonmentBox()">
                                     <option value="GRANT_OFFER">GRANT_OFFER</option>
                                     <option value="SEND_WABA">SEND_WABA</option>
                                     <option value="SEND_PUSH">SEND_PUSH</option>
@@ -1024,10 +1024,8 @@
                                 <select id="edit-task-trigger">
                                     <option value="IMMEDIATE">IMMEDIATE</option>
                                     <option value="ON_SCREEN_VISIT">ON_SCREEN_VISIT</option>
-                                    <option value="AFTER_SIGNUP">AFTER_SIGNUP</option>
                                     <option value="AFTER_IG_CONNECT">AFTER_IG_CONNECT</option>
                                     <option value="BEFORE_OFFER_EXPIRY">BEFORE_OFFER_EXPIRY</option>
-                                    <option value="AFTER_OFFER_EXPIRY">AFTER_OFFER_EXPIRY</option>
                                 </select>
                             </div>
                             <div>
@@ -1087,6 +1085,19 @@
                                     <option value="false">⏸️ False (Pause timer until screen entry)</option>
                                 </select>
                                 <small id="edit-task-timer-hint" style="color: #38bdf8; font-size: 11px; display: block; margin-top: 3px;">Required: true for MANUAL mode</small>
+                            </div>
+                        </div>
+
+                        <div id="edit-task-abandonment-box" class="grid" style="margin-bottom: 8px; display: none;">
+                            <div>
+                                <label style="font-weight: 600;">Max Abandonment Offers / Day</label>
+                                <input type="number" id="edit-task-max-abandonment" min="1" step="1" placeholder="1 (default)">
+                                <small style="color: #94a3b8; font-size: 11px; display: block; margin-top: 3px;">TRACK_ABANDONMENT only. Blank = 1 per journey day</small>
+                            </div>
+                            <div>
+                                <label style="font-weight: 600;">Cooldown Between Offers (minutes)</label>
+                                <input type="number" id="edit-task-abandonment-cooldown" min="0" step="1" placeholder="0 (no cooldown)">
+                                <small style="color: #94a3b8; font-size: 11px; display: block; margin-top: 3px;">Min gap since last sent offer. Keep offer life shorter than this</small>
                             </div>
                         </div>
 
@@ -2250,6 +2261,10 @@
                         ? `<span style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600;">✨ Reveal: ${escapeHtml(t.conditions.reveal_mode)}</span>` 
                         : '';
 
+                    const abandonTag = (t.conditions?.max_abandonment_offers_per_day || t.conditions?.abandonment_cooldown_minutes)
+                        ? `<span style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.3); padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600;">🔁 Max ${t.conditions.max_abandonment_offers_per_day || 1}/day • ${t.conditions.abandonment_cooldown_minutes || 0}m cooldown</span>`
+                        : '';
+
                     nestedTasksHtml += `<div style="background: #0f172a; padding: 8px 12px; border-radius: 6px; border: 1px solid #1e293b; display: flex; flex-direction: column; gap: 6px; font-size: 12px;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <span><strong style="color: #f3f4f6;">${escapeHtml(t.title || t.task_type)}</strong> <span style="color: #94a3b8;">(${t.task_type} • ${t.trigger_event} • ${t.delay_minutes}m delay)</span></span>
@@ -2258,7 +2273,7 @@
                                 ${t.id ? `<button class="btn" style="padding: 2px 7px; font-size: 11px; background: #3b82f6;" onclick="loadTaskForEdit('${t.id}')">✏️ Edit</button>` : ''}
                             </div>
                         </div>
-                        ${(wabaTag || pushTag || offerTag || revealTag) ? `<div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 2px;">${wabaTag} ${pushTag} ${offerTag} ${revealTag}</div>` : ''}
+                        ${(wabaTag || pushTag || offerTag || revealTag || abandonTag) ? `<div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 2px;">${wabaTag} ${pushTag} ${offerTag} ${revealTag} ${abandonTag}</div>` : ''}
                     </div>`;
                 });
                 nestedTasksHtml += `</div></div>`;
@@ -3625,6 +3640,8 @@
             const sortVal = taskData?.sort_order ?? taskCounter;
             const revealModeVal = taskData?.conditions?.reveal_mode || 'MANUAL';
             const startTimerGrantVal = taskData?.conditions?.start_timer_on_grant !== undefined ? String(taskData.conditions.start_timer_on_grant) : 'false';
+            const maxAbandonmentVal = taskData?.conditions?.max_abandonment_offers_per_day ?? '';
+            const abandonmentCooldownVal = taskData?.conditions?.abandonment_cooldown_minutes ?? '';
 
             const pushSelectHtml = getPushTemplateSelectHtml(pushVal);
 
@@ -3657,10 +3674,8 @@
                         <select class="task-trigger" style="width: 100%; box-sizing: border-box; font-size: 13px; padding: 8px 10px;">
                             <option value="IMMEDIATE" ${triggerVal === 'IMMEDIATE' ? 'selected' : ''}>IMMEDIATE (Day Entry / Start)</option>
                             <option value="ON_SCREEN_VISIT" ${triggerVal === 'ON_SCREEN_VISIT' ? 'selected' : ''}>ON_SCREEN_VISIT (Subscription Screen)</option>
-                            <option value="AFTER_SIGNUP" ${triggerVal === 'AFTER_SIGNUP' ? 'selected' : ''}>AFTER_SIGNUP</option>
                             <option value="AFTER_IG_CONNECT" ${triggerVal === 'AFTER_IG_CONNECT' ? 'selected' : ''}>AFTER_IG_CONNECT</option>
                             <option value="BEFORE_OFFER_EXPIRY" ${triggerVal === 'BEFORE_OFFER_EXPIRY' ? 'selected' : ''}>BEFORE_OFFER_EXPIRY</option>
-                            <option value="AFTER_OFFER_EXPIRY" ${triggerVal === 'AFTER_OFFER_EXPIRY' ? 'selected' : ''}>AFTER_OFFER_EXPIRY</option>
                         </select>
                     </div>
                     <div>
@@ -3694,6 +3709,19 @@
                                 <option value="false" ${startTimerGrantVal === 'false' ? 'selected' : ''}>⏸️ False (Pause timer until screen entry)</option>
                             </select>
                             <small class="task-timer-hint" style="color: #38bdf8; font-size: 11px; display: block; margin-top: 3px;">${revealModeVal === 'AUTOMATIC' ? 'Required: false for AUTOMATIC mode' : 'Required: true for MANUAL mode'}</small>
+                        </div>
+                    </div>
+
+                    <div class="abandonment-setup-box" style="grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 10px; display: ${typeVal === 'TRACK_ABANDONMENT' ? 'grid' : 'none'};">
+                        <div>
+                            <label style="font-weight: 600; color: #cbd5e1; font-size: 12px; display: block; margin-bottom: 4px;">Max Abandonment Offers / Day</label>
+                            <input type="number" class="task-max-abandonment" min="1" step="1" value="${maxAbandonmentVal}" placeholder="1 (default)" style="width: 100%; box-sizing: border-box; font-size: 13px; padding: 8px 10px;">
+                            <small style="color: #94a3b8; font-size: 11px; display: block; margin-top: 3px;">Blank = 1 per journey day</small>
+                        </div>
+                        <div>
+                            <label style="font-weight: 600; color: #cbd5e1; font-size: 12px; display: block; margin-bottom: 4px;">Cooldown Between Offers (minutes)</label>
+                            <input type="number" class="task-abandonment-cooldown" min="0" step="1" value="${abandonmentCooldownVal}" placeholder="0 (no cooldown)" style="width: 100%; box-sizing: border-box; font-size: 13px; padding: 8px 10px;">
+                            <small style="color: #94a3b8; font-size: 11px; display: block; margin-top: 3px;">Keep offer life shorter than this so the next offer can be granted</small>
                         </div>
                     </div>
                 </div>
@@ -3736,6 +3764,12 @@
 
             const typeSelect = div.querySelector('.task-type');
             const revealTimerBox = div.querySelector('.reveal-timer-setup-box');
+            const abandonmentBox = div.querySelector('.abandonment-setup-box');
+            if (typeSelect && abandonmentBox) {
+                typeSelect.addEventListener('change', () => {
+                    abandonmentBox.style.display = typeSelect.value === 'TRACK_ABANDONMENT' ? 'grid' : 'none';
+                });
+            }
             if (typeSelect && revealTimerBox) {
                 typeSelect.addEventListener('change', () => {
                     if (typeSelect.value === 'GRANT_OFFER' || typeSelect.value === 'TRACK_ABANDONMENT') {
@@ -3765,6 +3799,15 @@
             }
         }
 
+        function getAbandonmentConditions(row) {
+            const maxVal = row.querySelector('.task-max-abandonment')?.value;
+            const cooldownVal = row.querySelector('.task-abandonment-cooldown')?.value;
+            return {
+                ...(maxVal !== '' && maxVal !== undefined ? { max_abandonment_offers_per_day: parseInt(maxVal) } : {}),
+                ...(cooldownVal !== '' && cooldownVal !== undefined ? { abandonment_cooldown_minutes: parseInt(cooldownVal) } : {})
+            };
+        }
+
         function removeTaskRow(id) {
             const row = document.getElementById(`task-row-${id}`);
             if(row) row.remove();
@@ -3789,7 +3832,8 @@
                         conditions = {
                             reveal_mode: revealModeVal,
                             start_timer_on_grant: startTimerVal === 'true',
-                            ...(isIgVal !== '' ? { is_instagram_connected: isIgVal === 'true' } : {})
+                            ...(isIgVal !== '' ? { is_instagram_connected: isIgVal === 'true' } : {}),
+                            ...(taskType === 'TRACK_ABANDONMENT' ? getAbandonmentConditions(row) : {})
                         };
                     } else if (isIgVal !== '') {
                         conditions = {
@@ -3900,13 +3944,14 @@
                     const offerIdVal = row.querySelector('.task-offer-id')?.value;
 
                     let conditions = undefined;
-                    if (taskType === 'GRANT_OFFER') {
+                    if (taskType === 'GRANT_OFFER' || taskType === 'TRACK_ABANDONMENT') {
                         const revealModeVal = row.querySelector('.task-reveal-mode')?.value || 'MANUAL';
                         const startTimerVal = row.querySelector('.task-start-timer-grant')?.value;
                         conditions = {
                             reveal_mode: revealModeVal,
                             start_timer_on_grant: startTimerVal === 'true',
-                            ...(isIgVal !== '' ? { is_instagram_connected: isIgVal === 'true' } : {})
+                            ...(isIgVal !== '' ? { is_instagram_connected: isIgVal === 'true' } : {}),
+                            ...(taskType === 'TRACK_ABANDONMENT' ? getAbandonmentConditions(row) : {})
                         };
                     } else if (isIgVal !== '') {
                         conditions = {
@@ -3974,6 +4019,12 @@
         function closeStandaloneTaskEdit() {
             const form = document.getElementById('standalone-task-edit-form');
             if (form) form.style.display = 'none';
+        }
+
+        function syncEditTaskAbandonmentBox() {
+            const box = document.getElementById('edit-task-abandonment-box');
+            const type = document.getElementById('edit-task-type')?.value;
+            if (box) box.style.display = type === 'TRACK_ABANDONMENT' ? 'grid' : 'none';
         }
 
         function syncEditTaskRevealTimer() {
@@ -4066,6 +4117,12 @@
                     }
                     syncEditTaskRevealTimer();
 
+                    const maxAbEl = document.getElementById('edit-task-max-abandonment');
+                    const cooldownAbEl = document.getElementById('edit-task-abandonment-cooldown');
+                    if (maxAbEl) maxAbEl.value = cond.max_abandonment_offers_per_day ?? '';
+                    if (cooldownAbEl) cooldownAbEl.value = cond.abandonment_cooldown_minutes ?? '';
+                    syncEditTaskAbandonmentBox();
+
                     if (formContainer) formContainer.style.display = 'block';
                     showToast(`✅ Task ${task.id.substring(0, 8)}... loaded into form!`);
                 }
@@ -4120,6 +4177,12 @@
                 if (condIgVal !== '') conditions.is_instagram_connected = condIgVal === 'true';
                 if (revealModeVal) conditions.reveal_mode = revealModeVal;
                 if (startTimerVal !== '' && startTimerVal !== undefined) conditions.start_timer_on_grant = startTimerVal === 'true';
+                if (taskType === 'TRACK_ABANDONMENT') {
+                    const maxAbVal = document.getElementById('edit-task-max-abandonment')?.value;
+                    const cooldownAbVal = document.getElementById('edit-task-abandonment-cooldown')?.value;
+                    if (maxAbVal !== '' && maxAbVal !== undefined) conditions.max_abandonment_offers_per_day = parseInt(maxAbVal);
+                    if (cooldownAbVal !== '' && cooldownAbVal !== undefined) conditions.abandonment_cooldown_minutes = parseInt(cooldownAbVal);
+                }
                 if (Object.keys(conditions).length > 0) body.conditions = conditions;
 
                 console.log(`📡 Updating Task ${id} with body:`, body);
