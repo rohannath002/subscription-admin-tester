@@ -1043,8 +1043,10 @@
                                 </select>
                             </div>
                             <div>
-                                <label>WABA Template Code</label>
-                                <input type="text" id="edit-task-waba" placeholder="e.g. sub_waba_d0_intro">
+                                <label>WABA Template (WhatsApp)</label>
+                                <select id="edit-task-waba">
+                                    <option value="">-- No WABA Template --</option>
+                                </select>
                             </div>
                         </div>
 
@@ -1925,6 +1927,7 @@
         }
 
         let cachedNotificationTemplates = [];
+        let cachedWabaTemplates = [];
 
         async function loadNotificationTemplates() {
             try {
@@ -1941,8 +1944,24 @@
             }
         }
 
+        async function loadWabaTemplates() {
+            try {
+                const res = await fetch(`${BASE_URL}/days/waba-templates`, {
+                    headers: HEADERS
+                });
+                const d = await res.json();
+                if (d && d.success && Array.isArray(d.data)) {
+                    cachedWabaTemplates = d.data;
+                    console.log('✅ Dynamically fetched WABA Templates API:', cachedWabaTemplates);
+                }
+            } catch (e) {
+                console.warn('Failed to load WABA templates from API:', e);
+            }
+        }
+
         // Fetch API on load
         loadNotificationTemplates();
+        loadWabaTemplates();
 
         function showToast(message) {
             const existing = document.querySelector('.toast-notification');
@@ -3522,6 +3541,37 @@
         let taskCounter = 0;
         let cachedOffers = [];
 
+        function getWabaTemplateSelectHtml(wabaVal = '') {
+            const defaultCatalog = [
+                {
+                    template_code: 'subscription_visit_discount_offer_v1',
+                    template_name: 'Day 0 Welcome Discount Offer',
+                    description: 'Annual plan offer (4 vars: Name, Price, Adjustment, Validity)'
+                },
+                {
+                    template_code: 'profile_update_v1',
+                    template_name: 'Testing Template for Developers',
+                    description: 'General journey task notification with 2 variables: Name, Activity details'
+                }
+            ];
+
+            const templates = (Array.isArray(cachedWabaTemplates) && cachedWabaTemplates.length > 0)
+                ? cachedWabaTemplates
+                : defaultCatalog;
+
+            let html = `<option value="">-- No WABA Template --</option>`;
+            templates.forEach(t => {
+                const isSel = (wabaVal === t.template_code) ? 'selected' : '';
+                html += `<option value="${t.template_code}" ${isSel}>💬 ${t.template_code} — ${t.template_name || ''}</option>`;
+            });
+
+            if (wabaVal && !templates.some(t => t.template_code === wabaVal)) {
+                html += `<option value="${escapeHtml(wabaVal)}" selected>Custom: ${escapeHtml(wabaVal)}</option>`;
+            }
+
+            return html;
+        }
+
         function getPushTemplateSelectHtml(pushVal = '') {
             let pushTemplateCatalog = [];
 
@@ -3645,6 +3695,7 @@
             const abandonmentCooldownVal = taskData?.conditions?.abandonment_cooldown_minutes ?? '';
 
             const pushSelectHtml = getPushTemplateSelectHtml(pushVal);
+            const wabaSelectHtml = getWabaTemplateSelectHtml(wabaVal);
 
             div.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.15);">
@@ -3730,8 +3781,8 @@
                 <!-- Section 3: Extra Conditions & Communication -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
                     <div>
-                        <label style="font-weight: 600; color: #94a3b8; font-size: 12px; display: block; margin-bottom: 4px;">WABA Template Code</label>
-                        <input type="text" class="task-waba-code" value="${wabaVal}" placeholder="e.g. tpl_intro_onboarding" style="width: 100%; box-sizing: border-box; font-size: 13px; padding: 8px 10px;">
+                        <label style="font-weight: 600; color: #94a3b8; font-size: 12px; display: block; margin-bottom: 4px;">WABA Template (WhatsApp)</label>
+                        <select class="task-waba-code" style="width: 100%; box-sizing: border-box; font-size: 13px; padding: 8px 10px;">${wabaSelectHtml}</select>
                     </div>
                     <div>
                         <label style="font-weight: 600; color: #94a3b8; font-size: 12px; display: block; margin-bottom: 4px;">Push Template Code</label>
@@ -4097,7 +4148,7 @@
                     if (typeEl) typeEl.value = task.task_type || 'GRANT_OFFER';
                     if (triggerEl) triggerEl.value = task.trigger_event || 'IMMEDIATE';
                     if (delayEl) delayEl.value = task.delay_minutes ?? 0;
-                    if (wabaEl) wabaEl.value = task.waba_template_code || '';
+                    if (wabaEl) wabaEl.innerHTML = getWabaTemplateSelectHtml(task.waba_template_code || '');
                     if (sortEl) sortEl.value = task.sort_order ?? 0;
                     if (isActiveEl) isActiveEl.value = task.is_active !== false ? 'true' : 'false';
 
