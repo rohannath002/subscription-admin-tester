@@ -1044,9 +1044,15 @@
                             </div>
                             <div>
                                 <label>WABA Template (WhatsApp)</label>
-                                <select id="edit-task-waba">
+                                <select id="edit-task-waba" onchange="toggleEditCustomWaba(this)">
                                     <option value="">-- No WABA Template --</option>
                                 </select>
+                                <div id="edit-custom-waba-box" style="margin-top: 6px; display: none;">
+                                    <input type="text" id="edit-task-custom-waba" placeholder="e.g. subscription_visit_discount_offer_v2" style="width: 100%; box-sizing: border-box; font-size: 13px; padding: 7px 10px; border: 1px solid #38bdf8; border-radius: 4px; background: rgba(15, 23, 42, 0.9); color: #fff;">
+                                    <small id="edit-custom-waba-hint" style="color: #38bdf8; font-size: 11px; display: block; margin-top: 3px;">
+                                        Accepted prefixes: subscription_visit_discount_offer, profile_update
+                                    </small>
+                                </div>
                             </div>
                         </div>
 
@@ -1928,6 +1934,7 @@
 
         let cachedNotificationTemplates = [];
         let cachedWabaTemplates = [];
+        let cachedWabaAcceptedPrefixes = ['subscription_visit_discount_offer', 'profile_update'];
 
         async function loadNotificationTemplates() {
             try {
@@ -1952,6 +1959,9 @@
                 const d = await res.json();
                 if (d && d.success && Array.isArray(d.data)) {
                     cachedWabaTemplates = d.data;
+                    if (Array.isArray(d.accepted_prefixes) && d.accepted_prefixes.length > 0) {
+                        cachedWabaAcceptedPrefixes = d.accepted_prefixes;
+                    }
                     console.log('✅ Dynamically fetched WABA Templates API:', cachedWabaTemplates);
                 }
             } catch (e) {
@@ -3541,12 +3551,24 @@
         let taskCounter = 0;
         let cachedOffers = [];
 
+        function isWabaCustomCode(wabaVal = '') {
+            if (!wabaVal) return false;
+            const defaultCatalog = [
+                { template_code: 'subscription_visit_discount_offer_v2' },
+                { template_code: 'profile_update_v1' }
+            ];
+            const templates = (Array.isArray(cachedWabaTemplates) && cachedWabaTemplates.length > 0)
+                ? cachedWabaTemplates
+                : defaultCatalog;
+            return !templates.some(t => t.template_code === wabaVal);
+        }
+
         function getWabaTemplateSelectHtml(wabaVal = '') {
             const defaultCatalog = [
                 {
-                    template_code: 'subscription_visit_discount_offer_v1',
-                    template_name: 'Day 0 Welcome Discount Offer',
-                    description: 'Annual plan offer (4 vars: Name, Price, Adjustment, Validity)'
+                    template_code: 'subscription_visit_discount_offer_v2',
+                    template_name: 'Day 0 Welcome Discount Offer (v2)',
+                    description: 'Annual plan offer with 4 variables: Name, Price, Adjustment, Validity'
                 },
                 {
                     template_code: 'profile_update_v1',
@@ -3560,16 +3582,71 @@
                 : defaultCatalog;
 
             let html = `<option value="">-- No WABA Template --</option>`;
+            let matched = false;
             templates.forEach(t => {
                 const isSel = (wabaVal === t.template_code) ? 'selected' : '';
+                if (isSel) matched = true;
                 html += `<option value="${t.template_code}" ${isSel}>💬 ${t.template_code} — ${t.template_name || ''}</option>`;
             });
 
-            if (wabaVal && !templates.some(t => t.template_code === wabaVal)) {
-                html += `<option value="${escapeHtml(wabaVal)}" selected>Custom: ${escapeHtml(wabaVal)}</option>`;
-            }
+            const isCustom = Boolean(wabaVal && !matched);
+            html += `<option value="__custom__" ${isCustom ? 'selected' : ''}>✏️ Custom / Other Template Name...</option>`;
 
             return html;
+        }
+
+        function toggleRowCustomWaba(selectEl) {
+            const container = selectEl.closest('.task-waba-container');
+            if (!container) return;
+            const box = container.querySelector('.task-custom-waba-box');
+            const input = container.querySelector('.task-custom-waba-input');
+            const hint = container.querySelector('.task-custom-waba-hint');
+            if (!box || !input) return;
+
+            if (hint && cachedWabaAcceptedPrefixes && cachedWabaAcceptedPrefixes.length > 0) {
+                hint.innerText = `Accepted prefixes: ${cachedWabaAcceptedPrefixes.join(', ')}`;
+            }
+
+            if (selectEl.value === '__custom__') {
+                box.style.display = 'block';
+                input.focus();
+            } else {
+                box.style.display = 'none';
+                input.value = '';
+            }
+        }
+
+        function toggleEditCustomWaba(selectEl, initialVal) {
+            const box = document.getElementById('edit-custom-waba-box');
+            const input = document.getElementById('edit-task-custom-waba');
+            const hint = document.getElementById('edit-custom-waba-hint');
+            if (!box || !input) return;
+
+            if (hint && cachedWabaAcceptedPrefixes && cachedWabaAcceptedPrefixes.length > 0) {
+                hint.innerText = `Accepted prefixes: ${cachedWabaAcceptedPrefixes.join(', ')}`;
+            }
+
+            if (selectEl.value === '__custom__') {
+                box.style.display = 'block';
+                if (initialVal && initialVal !== '__custom__') {
+                    input.value = initialVal;
+                }
+                input.focus();
+            } else {
+                box.style.display = 'none';
+                input.value = '';
+            }
+        }
+
+        function getRowWabaCode(row) {
+            const sel = row.querySelector('.task-waba-code');
+            if (!sel) return undefined;
+            const selVal = sel.value.trim();
+            if (selVal === '__custom__') {
+                const customInput = row.querySelector('.task-custom-waba-input');
+                return customInput?.value.trim() || undefined;
+            }
+            return selVal || undefined;
         }
 
         function getPushTemplateSelectHtml(pushVal = '') {
@@ -3780,9 +3857,13 @@
 
                 <!-- Section 3: Extra Conditions & Communication -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
-                    <div>
+                    <div class="task-waba-container">
                         <label style="font-weight: 600; color: #94a3b8; font-size: 12px; display: block; margin-bottom: 4px;">WABA Template (WhatsApp)</label>
-                        <select class="task-waba-code" style="width: 100%; box-sizing: border-box; font-size: 13px; padding: 8px 10px;">${wabaSelectHtml}</select>
+                        <select class="task-waba-code" onchange="toggleRowCustomWaba(this)" style="width: 100%; box-sizing: border-box; font-size: 13px; padding: 8px 10px;">${wabaSelectHtml}</select>
+                        <div class="task-custom-waba-box" style="margin-top: 6px; display: ${isWabaCustomCode(wabaVal) ? 'block' : 'none'};">
+                            <input type="text" class="task-custom-waba-input" value="${isWabaCustomCode(wabaVal) ? escapeHtml(wabaVal) : ''}" placeholder="e.g. subscription_visit_discount_offer_v2" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 6px 10px; border: 1px solid #38bdf8; border-radius: 4px; background: rgba(15, 23, 42, 0.9); color: #fff;">
+                            <small class="task-custom-waba-hint" style="color: #38bdf8; font-size: 11px; display: block; margin-top: 3px;">Accepted prefixes: ${cachedWabaAcceptedPrefixes.join(', ')}</small>
+                        </div>
                     </div>
                     <div>
                         <label style="font-weight: 600; color: #94a3b8; font-size: 12px; display: block; margin-bottom: 4px;">Push Template Code</label>
@@ -3900,7 +3981,7 @@
                         delay_minutes: parseInt(row.querySelector('.task-delay-minutes').value) || 0,
                         conditions: conditions,
                         offer_id: offerIdVal || undefined,
-                        waba_template_code: row.querySelector('.task-waba-code').value || undefined,
+                        waba_template_code: getRowWabaCode(row),
                         push_template_code: row.querySelector('.task-push-code')?.value || undefined,
                         sort_order: parseInt(row.querySelector('.task-sort-order').value) || (idx + 1),
                         is_active: row.querySelector('.task-is-active')?.value === 'true'
@@ -4018,7 +4099,7 @@
                         delay_minutes: parseInt(row.querySelector('.task-delay-minutes').value) || 0,
                         conditions: conditions,
                         offer_id: offerIdVal || undefined,
-                        waba_template_code: row.querySelector('.task-waba-code').value || undefined,
+                        waba_template_code: getRowWabaCode(row),
                         push_template_code: row.querySelector('.task-push-code')?.value || undefined,
                         sort_order: parseInt(row.querySelector('.task-sort-order').value) || (idx + 1),
                         is_active: row.querySelector('.task-is-active')?.value === 'true'
@@ -4148,7 +4229,11 @@
                     if (typeEl) typeEl.value = task.task_type || 'GRANT_OFFER';
                     if (triggerEl) triggerEl.value = task.trigger_event || 'IMMEDIATE';
                     if (delayEl) delayEl.value = task.delay_minutes ?? 0;
-                    if (wabaEl) wabaEl.innerHTML = getWabaTemplateSelectHtml(task.waba_template_code || '');
+                    if (wabaEl) {
+                        const rawWaba = task.waba_template_code || '';
+                        wabaEl.innerHTML = getWabaTemplateSelectHtml(rawWaba);
+                        toggleEditCustomWaba(wabaEl, rawWaba);
+                    }
                     if (sortEl) sortEl.value = task.sort_order ?? 0;
                     if (isActiveEl) isActiveEl.value = task.is_active !== false ? 'true' : 'false';
 
@@ -4210,8 +4295,14 @@
                 const offerVal = document.getElementById('edit-task-offer')?.value;
                 body.offer_id = offerVal || null;
 
-                const wabaVal = document.getElementById('edit-task-waba')?.value.trim();
-                body.waba_template_code = wabaVal || null;
+                const wabaSel = document.getElementById('edit-task-waba')?.value.trim();
+                let wabaVal = null;
+                if (wabaSel === '__custom__') {
+                    wabaVal = document.getElementById('edit-task-custom-waba')?.value.trim() || null;
+                } else if (wabaSel) {
+                    wabaVal = wabaSel;
+                }
+                body.waba_template_code = wabaVal;
 
                 const pushVal = document.getElementById('edit-task-push')?.value.trim();
                 body.push_template_code = pushVal || null;
