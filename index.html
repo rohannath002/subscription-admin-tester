@@ -2439,10 +2439,11 @@
             const enrolment = d.active_enrolment;
             const history = Array.isArray(d.journey_history) ? d.journey_history : [];
             const logs = Array.isArray(d.task_execution_logs) ? d.task_execution_logs : [];
+            const userOffers = Array.isArray(d.user_offers) ? d.user_offers : [];
 
             let html = `<div class="list-header-bar">
                 <span>🔍 Audit Trail — ${escapeHtml(creator.fullname || creator.insta_user_name || 'Creator')}</span>
-                <span>${enrolment ? '1 Active Enrolment' : 'No Active Enrolment'} • ${history.length} History • ${logs.length} Task Logs</span>
+                <span>${enrolment ? '1 Active Enrolment' : 'No Active Enrolment'} • ${history.length} History • ${logs.length} Task Logs${userOffers.length ? ` • ${userOffers.length} Offers` : ''}</span>
             </div>`;
 
             // 1. CREATOR PROFILE
@@ -2649,6 +2650,56 @@
                     `}
                 </div>
             </div>`;
+
+            // 3.5 GRANTED OFFERS & REVEAL ANIMATION TRACKING
+            if (userOffers.length > 0) {
+                html += `<div style="margin-top: 14px;">
+                    <div class="list-header-bar" style="margin: 0 0 10px 0; background: #1e1b4b; border: 1px solid #6366f1; border-radius: 6px; padding: 8px 12px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 15px;">🎁</span>
+                            <span style="color: #c7d2fe; font-weight: 700; font-size: 13px;">Creator Offers & Reveal Animation Tracking (${userOffers.length})</span>
+                        </div>
+                        <span style="font-size: 11px; color: #a5b4fc;">Track animation_shown_at, reveal mode & countdown timer</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        ${userOffers.map((uo, uoIdx) => {
+                            const o = uo.offer || {};
+                            const hasRevealed = Boolean(uo.animation_shown_at);
+                            const revealStatusBadge = hasRevealed
+                                ? `<span class="status-pill-active" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; font-weight: 700;">✨ REVEALED</span>`
+                                : `<span class="status-pill-pending" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #f59e0b; font-weight: 600;">⏳ UNREVEALED</span>`;
+                            
+                            const offerCode = o.offer_code || o.code || 'N/A';
+                            const revealMode = uo.offer_snapshot?.reveal_mode || o.reveal_mode || 'MANUAL';
+                            
+                            return `<div class="item-card" style="border-left: 3px solid ${hasRevealed ? '#10b981' : '#f59e0b'}; background: #0c1222; margin: 0;">
+                                <div class="item-card-header">
+                                    <div class="item-title">
+                                        <span>#${uoIdx + 1}</span>
+                                        <span style="font-weight: 700; color: #f1f5f9;">${escapeHtml(o.name || offerCode)}</span>
+                                        ${statusPillHtml(uo.status)}
+                                        ${revealStatusBadge}
+                                    </div>
+                                    <div style="display: flex; gap: 6px; align-items: center;">
+                                        ${idPill(uo.id, '', 'UserOffer ID', 'background: #1e1b4b; color: #a5b4fc; border-color: #6366f1;')}
+                                        ${uo.offer_id ? idPill(uo.offer_id, '', 'Offer ID') : ''}
+                                    </div>
+                                </div>
+                                <div class="item-details-grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));">
+                                    ${detailRow('Offer Code', escapeHtml(offerCode), 'color: #fbbf24; font-weight: 700;')}
+                                    ${detailRow('Reveal Mode', escapeHtml(revealMode), 'color: #38bdf8; font-weight: 600;')}
+                                    ${detailRow('Animation Shown (Reveal Time)', hasRevealed ? `<span style="color: #34d399; font-weight: 700;">✨ ${fmtDateTime(uo.animation_shown_at)}</span>` : `<span style="color: #f59e0b; font-style: italic;">⏳ Not revealed (animation not shown yet)</span>`, hasRevealed ? 'color: #34d399;' : 'color: #f59e0b;')}
+                                    ${detailRow('Offer Status', statusPillHtml(uo.status))}
+                                    ${detailRow('Claimed At', uo.claimed_at ? fmtDateTime(uo.claimed_at) : '—')}
+                                    ${detailRow('Claim Expires At', uo.claim_expires_at ? fmtDateTime(uo.claim_expires_at) : (hasRevealed ? '—' : 'Starts on reveal'))}
+                                    ${detailRow('Window Expires At', fmtDateTime(uo.window_expires_at), 'font-size: 11px;')}
+                                    ${detailRow('Granted At', fmtDateTime(uo.created_at), 'font-size: 11px;')}
+                                </div>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                </div>`;
+            }
 
             // 4. TASK EXECUTION LOGS CONTAINER
             html += `<div id="audit-trail-task-logs-container"></div>`;
@@ -2949,6 +3000,12 @@
                             ${pushCode ? detailRow('Push Template', `<span style="color: #60a5fa; font-weight: 600;">🔔 ${escapeHtml(pushCode)}</span> ${selectedVariant ? `<span style="color: #f472b6; font-size: 11px; font-weight: 600;">[${escapeHtml(selectedVariant)}]</span>` : ''} ${l.metadata?.push_sent === true ? '<span style="color: #34d399; font-size: 11px;">(Sent ✓)</span>' : (l.metadata?.push_error ? `<span style="color: #f87171; font-size: 11px;">(Error: ${escapeHtml(l.metadata.push_error)})</span>` : '<span style="color: #94a3b8; font-size: 11px;">(Configured)</span>')}`) : ''}
                             ${l.metadata?.push_title ? detailRow('Push Message Copy', `<span style="color: #e2e8f0; font-weight: 600;">"${escapeHtml(l.metadata.push_title)}"</span>${l.metadata?.push_body ? `<br><span style="color: #94a3b8; font-size: 11px;">${escapeHtml(l.metadata.push_body)}</span>` : ''}`) : ''}
                             ${(offerId || userOfferId) ? detailRow('Offer Linked', `<span style="color: #f59e0b; font-weight: 600;">🏷️ ${escapeHtml(offerId || 'N/A')}</span>${userOfferId ? ` <span style="font-size: 11px; color: #fbbf24;">(UserOffer: ${escapeHtml(userOfferId)})</span>` : ''}`) : ''}
+                            ${l.user_offer ? detailRow('Offer Reveal / Animation', l.user_offer.animation_shown_at 
+                                ? `<span style="color: #34d399; font-weight: 700;">✨ Revealed / Shown: ${fmtDateTime(l.user_offer.animation_shown_at)}</span>` 
+                                : `<span style="color: #f59e0b; font-weight: 600;">⏳ Not Revealed (Animation not played yet)</span>`,
+                                l.user_offer.animation_shown_at ? 'color: #34d399;' : 'color: #f59e0b;'
+                            ) : ''}
+                            ${l.user_offer ? detailRow('User Offer Status', `${statusPillHtml(l.user_offer.status)}${l.user_offer.claimed_at ? ` <span style="font-size: 11px; color: #93c5fd;">(Claimed: ${fmtDateTime(l.user_offer.claimed_at)})</span>` : ''}${l.user_offer.claim_expires_at ? ` <span style="font-size: 11px; color: #fde68a;">(Expires: ${fmtDateTime(l.user_offer.claim_expires_at)})</span>` : ''}`) : ''}
                             ${l.enrolment_id ? detailRow('Enrolment ID (Active)', `<span style="color: #a5b4fc; font-family: monospace; font-size: 11px;">${escapeHtml(l.enrolment_id)}</span>`) : ''}
                             ${l.history_id ? detailRow('History ID (Archived)', `<span style="color: #9ca3af; font-family: monospace; font-size: 11px;">${escapeHtml(l.history_id)}</span>`) : ''}
                             ${l.created_at ? detailRow('Created At', fmtDateTime(l.created_at), 'font-size: 11px;') : ''}
