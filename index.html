@@ -3001,11 +3001,14 @@
                             ${l.metadata?.push_title ? detailRow('Push Message Copy', `<span style="color: #e2e8f0; font-weight: 600;">"${escapeHtml(l.metadata.push_title)}"</span>${l.metadata?.push_body ? `<br><span style="color: #94a3b8; font-size: 11px;">${escapeHtml(l.metadata.push_body)}</span>` : ''}`) : ''}
                             ${(offerId || userOfferId) ? detailRow('Offer Linked', `<span style="color: #f59e0b; font-weight: 600;">🏷️ ${escapeHtml(offerId || 'N/A')}</span>${userOfferId ? ` <span style="font-size: 11px; color: #fbbf24;">(UserOffer: ${escapeHtml(userOfferId)})</span>` : ''}`) : ''}
                             ${l.user_offer ? detailRow('Offer Reveal / Animation', l.user_offer.animation_shown_at 
-                                ? `<span style="color: #34d399; font-weight: 700;">✨ Revealed / Shown: ${fmtDateTime(l.user_offer.animation_shown_at)}</span>` 
+                                ? `<span style="color: #34d399; font-weight: 700;">✨ ${fmtDateTime(l.user_offer.animation_shown_at)}</span>` 
                                 : `<span style="color: #f59e0b; font-weight: 600;">⏳ Not Revealed (Animation not played yet)</span>`,
                                 l.user_offer.animation_shown_at ? 'color: #34d399;' : 'color: #f59e0b;'
                             ) : ''}
-                            ${l.user_offer ? detailRow('User Offer Status', `${statusPillHtml(l.user_offer.status)}${l.user_offer.claimed_at ? ` <span style="font-size: 11px; color: #93c5fd;">(Claimed: ${fmtDateTime(l.user_offer.claimed_at)})</span>` : ''}${l.user_offer.claim_expires_at ? ` <span style="font-size: 11px; color: #fde68a;">(Expires: ${fmtDateTime(l.user_offer.claim_expires_at)})</span>` : ''}`) : ''}
+                            ${l.user_offer ? detailRow('User Offer Status', statusPillHtml(l.user_offer.status)) : ''}
+                            ${l.user_offer ? detailRow('Offer Claimed At', l.user_offer.claimed_at ? `<span style="color: #93c5fd; font-weight: 600;">${fmtDateTime(l.user_offer.claimed_at)}</span>` : '<span style="color: #94a3b8; font-style: italic;">—</span>') : ''}
+                            ${l.user_offer ? detailRow('Claim Expires At', l.user_offer.claim_expires_at ? `<span style="color: #fde68a; font-weight: 600;">${fmtDateTime(l.user_offer.claim_expires_at)}</span>` : '<span style="color: #94a3b8; font-style: italic;">—</span>') : ''}
+                            ${l.user_offer ? detailRow('Window Expires At', l.user_offer.window_expires_at ? `<span style="color: #e2e8f0; font-size: 11px;">${fmtDateTime(l.user_offer.window_expires_at)}</span>` : '<span style="color: #94a3b8; font-style: italic;">—</span>', 'font-size: 11px;') : ''}
                             ${l.enrolment_id ? detailRow('Enrolment ID (Active)', `<span style="color: #a5b4fc; font-family: monospace; font-size: 11px;">${escapeHtml(l.enrolment_id)}</span>`) : ''}
                             ${l.history_id ? detailRow('History ID (Archived)', `<span style="color: #9ca3af; font-family: monospace; font-size: 11px;">${escapeHtml(l.history_id)}</span>`) : ''}
                             ${l.created_at ? detailRow('Created At', fmtDateTime(l.created_at), 'font-size: 11px;') : ''}
