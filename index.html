@@ -1049,9 +1049,9 @@
                                     <option value="">-- No WABA Template --</option>
                                 </select>
                                 <div id="edit-custom-waba-box" style="margin-top: 6px; display: none;">
-                                    <input type="text" id="edit-task-custom-waba" placeholder="e.g. subscription_visit_discount_offer_v2" style="width: 100%; box-sizing: border-box; font-size: 13px; padding: 7px 10px; border: 1px solid #38bdf8; border-radius: 4px; background: rgba(15, 23, 42, 0.9); color: #fff;">
+                                    <input type="text" id="edit-task-custom-waba" placeholder="e.g. any_template_code_123" style="width: 100%; box-sizing: border-box; font-size: 13px; padding: 7px 10px; border: 1px solid #38bdf8; border-radius: 4px; background: rgba(15, 23, 42, 0.9); color: #fff;">
                                     <small id="edit-custom-waba-hint" style="color: #38bdf8; font-size: 11px; display: block; margin-top: 3px;">
-                                        Accepted prefixes: subscription_visit_discount_offer, profile_update
+                                        💡 Any alphanumeric template name is accepted (e.g. phase_subscription, promo_summer_2026)
                                     </small>
                                 </div>
                             </div>
@@ -1935,7 +1935,7 @@
 
         let cachedNotificationTemplates = [];
         let cachedWabaTemplates = [];
-        let cachedWabaAcceptedPrefixes = ['subscription_visit_discount_offer', 'profile_update'];
+        let cachedWabaAcceptedPrefixes = ['phase_subscription', 'phase_v2', 'subscription_visit_discount_offer', 'profile_update'];
 
         async function loadNotificationTemplates() {
             try {
@@ -3615,6 +3615,8 @@
         function isWabaCustomCode(wabaVal = '') {
             if (!wabaVal) return false;
             const defaultCatalog = [
+                { template_code: 'phase_subscription' },
+                { template_code: 'phase_v2' },
                 { template_code: 'subscription_visit_discount_offer_v2' },
                 { template_code: 'profile_update_v1' }
             ];
@@ -3626,6 +3628,16 @@
 
         function getWabaTemplateSelectHtml(wabaVal = '') {
             const defaultCatalog = [
+                {
+                    template_code: 'phase_subscription',
+                    template_name: 'Intro Offer',
+                    description: 'Collabs earning teaser with 4 variables: Name, Collabs status, Earnings projection, InPass urgency'
+                },
+                {
+                    template_code: 'phase_v2',
+                    template_name: 'Intro Offer Fallback',
+                    description: 'Collab update teaser with 4 variables: Name, Campaign, ID, Current Status'
+                },
                 {
                     template_code: 'subscription_visit_discount_offer_v2',
                     template_name: 'Day 0 Welcome Discount Offer (v2)',
@@ -3651,7 +3663,7 @@
             });
 
             const isCustom = Boolean(wabaVal && !matched);
-            html += `<option value="__custom__" ${isCustom ? 'selected' : ''}>✏️ Custom / Other Template Name...</option>`;
+            html += `<option value="__custom__" ${isCustom ? 'selected' : ''}>✏️ Enter Custom Template Name (Any Alphanumeric)...</option>`;
 
             return html;
         }
@@ -3664,8 +3676,8 @@
             const hint = container.querySelector('.task-custom-waba-hint');
             if (!box || !input) return;
 
-            if (hint && cachedWabaAcceptedPrefixes && cachedWabaAcceptedPrefixes.length > 0) {
-                hint.innerText = `Accepted prefixes: ${cachedWabaAcceptedPrefixes.join(', ')}`;
+            if (hint) {
+                hint.innerText = '💡 Any alphanumeric template name is accepted (e.g. phase_subscription, promo_summer_2026)';
             }
 
             if (selectEl.value === '__custom__') {
@@ -3683,8 +3695,8 @@
             const hint = document.getElementById('edit-custom-waba-hint');
             if (!box || !input) return;
 
-            if (hint && cachedWabaAcceptedPrefixes && cachedWabaAcceptedPrefixes.length > 0) {
-                hint.innerText = `Accepted prefixes: ${cachedWabaAcceptedPrefixes.join(', ')}`;
+            if (hint) {
+                hint.innerText = '💡 Any alphanumeric template name is accepted (e.g. phase_subscription, promo_summer_2026)';
             }
 
             if (selectEl.value === '__custom__') {
@@ -3922,8 +3934,8 @@
                         <label style="font-weight: 600; color: #94a3b8; font-size: 12px; display: block; margin-bottom: 4px;">WABA Template (WhatsApp)</label>
                         <select class="task-waba-code" onchange="toggleRowCustomWaba(this)" style="width: 100%; box-sizing: border-box; font-size: 13px; padding: 8px 10px;">${wabaSelectHtml}</select>
                         <div class="task-custom-waba-box" style="margin-top: 6px; display: ${isWabaCustomCode(wabaVal) ? 'block' : 'none'};">
-                            <input type="text" class="task-custom-waba-input" value="${isWabaCustomCode(wabaVal) ? escapeHtml(wabaVal) : ''}" placeholder="e.g. subscription_visit_discount_offer_v2" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 6px 10px; border: 1px solid #38bdf8; border-radius: 4px; background: rgba(15, 23, 42, 0.9); color: #fff;">
-                            <small class="task-custom-waba-hint" style="color: #38bdf8; font-size: 11px; display: block; margin-top: 3px;">Accepted prefixes: ${cachedWabaAcceptedPrefixes.join(', ')}</small>
+                            <input type="text" class="task-custom-waba-input" value="${isWabaCustomCode(wabaVal) ? escapeHtml(wabaVal) : ''}" placeholder="e.g. any_template_code_123" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 6px 10px; border: 1px solid #38bdf8; border-radius: 4px; background: rgba(15, 23, 42, 0.9); color: #fff;">
+                            <small class="task-custom-waba-hint" style="color: #38bdf8; font-size: 11px; display: block; margin-top: 3px;">💡 Any alphanumeric template name is accepted (e.g. phase_subscription, promo_summer_2026)</small>
                         </div>
                     </div>
                     <div>
