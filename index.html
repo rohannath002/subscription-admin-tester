@@ -1219,7 +1219,18 @@
                             <option value="CANCELLED">CANCELLED</option>
                         </select>
 
+                        <label>Page / Limit</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="number" id="enrolment-query-page" value="1" min="1" placeholder="Page">
+                            <input type="number" id="enrolment-query-limit" value="20" min="1" placeholder="Limit">
+                        </div>
+
                         <button class="btn btn-secondary" style="margin-top: 10px; width: 100%;" onclick="getAllEnrolments()">Get Enrolments List</button>
+                        <div style="display: flex; gap: 8px; margin-top: 8px; align-items: center;">
+                            <button class="btn btn-secondary" style="flex: 1;" onclick="changeEnrolmentPage(-1)">◀ Prev</button>
+                            <span id="enrolment-page-info" style="font-size: 12px; color: #9ca3af; white-space: nowrap;">Page 1</span>
+                            <button class="btn btn-secondary" style="flex: 1;" onclick="changeEnrolmentPage(1)">Next ▶</button>
+                        </div>
                     </div>
 
                     <h3 style="margin-top: 20px;">Manage Creator Enrolment (Update Status or Remove Creator)</h3>
@@ -4492,16 +4503,36 @@
                 const journeyId = document.getElementById('enrolment-query-journey-id').value;
                 const status = document.getElementById('enrolment-query-status').value;
                 
-                let query = '?page=1&limit=20';
+                const page = Math.max(1, parseInt(document.getElementById('enrolment-query-page').value) || 1);
+                const limit = Math.max(1, parseInt(document.getElementById('enrolment-query-limit').value) || 20);
+
+                let query = `?page=${page}&limit=${limit}`;
                 if(journeyId) query += `&journey_id=${journeyId}`;
                 if(status) query += `&status=${status}`;
 
                 const res = await fetch(`${BASE_URL}/enrolments${query}`, { headers: HEADERS });
                 const data = await res.json();
                 setResponse('enrolment-response', { status: res.status, data });
+
+                const meta = data?.meta || data?.data?.meta || data?.pagination || {};
+                const totalPages = meta.totalPages || meta.total_pages;
+                const total = meta.total ?? meta.total_items;
+                const info = document.getElementById('enrolment-page-info');
+                if (info) info.textContent = `Page ${meta.page || page}${totalPages ? ' of ' + totalPages : ''}${total !== undefined ? ' · Total: ' + total : ''}`;
+                window._enrolmentTotalPages = totalPages || null;
             } catch (err) {
                 setResponse('enrolment-response', { error: err.message });
             }
+        }
+
+        function changeEnrolmentPage(delta) {
+            const pageEl = document.getElementById('enrolment-query-page');
+            const current = parseInt(pageEl.value) || 1;
+            let next = Math.max(1, current + delta);
+            if (window._enrolmentTotalPages) next = Math.min(next, window._enrolmentTotalPages);
+            if (next === current) return;
+            pageEl.value = next;
+            getAllEnrolments();
         }
 
         async function updateEnrolmentStatus() {
