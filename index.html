@@ -1054,6 +1054,7 @@
                                         💡 Any alphanumeric template name is accepted (e.g. phase_subscription, promo_summer_2026)
                                     </small>
                                 </div>
+                                <div id="edit-reg-picker-host" style="margin-top: 10px;"></div>
                             </div>
                         </div>
 
@@ -1357,7 +1358,8 @@
                     loadPlansDropdown(),
                     loadJourneysDropdown(),
                     loadOffersDropdown(),
-                    loadNotificationTemplates()
+                    loadNotificationTemplates(),
+                    loadRegisterTemplates()
                 ]);
             } catch (e) {
                 console.error(e);
@@ -1963,6 +1965,63 @@
             }
         }
 
+        // ---- WhatsApp template register (ordered fallback list) ----
+        let cachedRegisterTemplates = [];
+        async function loadRegisterTemplates() {
+            try {
+                const res = await fetch(`${getRootApiUrl()}/admin-whatsapp-templates?for_subscription_journey=true&limit=100`, { headers: HEADERS });
+                const d = await res.json();
+                if (d && d.success && Array.isArray(d.data)) cachedRegisterTemplates = d.data;
+            } catch (e) {
+                console.warn('Failed to load WhatsApp register templates:', e);
+            }
+        }
+
+        function regLabel(id) {
+            const t = cachedRegisterTemplates.find(x => x.id === id);
+            if (!t) return `${id.slice(0, 8)}… (not in journey list)`;
+            const off = t.is_enabled === false ? ' · OFF' : '';
+            return `${t.name} [${t.type || ''} · ${t.status}${off}]`;
+        }
+
+        function getRegisterPickerHtml(ids = []) {
+            const el = document.createElement('div');
+            el.className = 'reg-picker';
+            el.dataset.ids = JSON.stringify(ids);
+            el.innerHTML = '<label style="font-weight: 600; color: #94a3b8; font-size: 12px; display: block; margin-bottom: 4px;">WhatsApp Register Templates (ordered, 1st tried first)</label><div class="reg-list"></div><div style="display:flex; gap:6px; margin-top:6px;"><select class="reg-add" style="flex:1; font-size:12px; padding:6px;"></select><button type="button" onclick="regAdd(this)" style="padding:6px 10px; font-size:12px;">+ Add</button></div><small style="color:#94a3b8; font-size:11px; display:block; margin-top:3px;">Overrides the single template above when non-empty. Falls back down the list.</small>';
+            regPickerRender(el);
+            return el.outerHTML;
+        }
+
+        function regPickerRender(picker) {
+            const ids = JSON.parse(picker.dataset.ids || '[]');
+            picker.querySelector('.reg-list').innerHTML = ids.length ? ids.map((id, i) => `
+                <div style="display:flex; align-items:center; gap:6px; padding:4px 6px; margin-bottom:3px; border:1px solid rgba(52,211,153,0.3); border-radius:4px; font-size:12px;">
+                    <b>${i + 1}.</b><span style="flex:1;">${escapeHtml(regLabel(id))}</span>
+                    <button type="button" onclick="regMove(this, ${i}, -1)" ${i === 0 ? 'disabled' : ''}>↑</button>
+                    <button type="button" onclick="regMove(this, ${i}, 1)" ${i === ids.length - 1 ? 'disabled' : ''}>↓</button>
+                    <button type="button" onclick="regRemove(this, ${i})">✕</button>
+                </div>`).join('') : '<div style="font-size:11px; color:#94a3b8;">None attached</div>';
+            const sel = picker.querySelector('.reg-add');
+            const opts = cachedRegisterTemplates.filter(t => t.is_enabled !== false && !ids.includes(t.id));
+            sel.innerHTML = '<option value="">-- pick a template --</option>' + opts.map(t => `<option value="${t.id}">${escapeHtml(regLabel(t.id))}</option>`).join('');
+        }
+
+        function regMutate(btn, fn) {
+            const picker = btn.closest('.reg-picker');
+            const ids = JSON.parse(picker.dataset.ids || '[]');
+            fn(ids, picker);
+            picker.dataset.ids = JSON.stringify(ids);
+            regPickerRender(picker);
+        }
+        function regAdd(btn) { regMutate(btn, (ids, p) => { const v = p.querySelector('.reg-add').value; if (v && !ids.includes(v)) ids.push(v); }); }
+        function regRemove(btn, i) { regMutate(btn, ids => { ids.splice(i, 1); }); }
+        function regMove(btn, i, d) { regMutate(btn, ids => { const j = i + d; if (j >= 0 && j < ids.length) [ids[i], ids[j]] = [ids[j], ids[i]]; }); }
+        function getRegPickerIds(scope) {
+            const picker = scope && scope.querySelector ? scope.querySelector('.reg-picker') : null;
+            return picker ? JSON.parse(picker.dataset.ids || '[]') : [];
+        }
+
         async function loadWabaTemplates() {
             try {
                 const res = await fetch(`${BASE_URL}/days/waba-templates`, {
@@ -1984,6 +2043,7 @@
         // Fetch API on load
         loadNotificationTemplates();
         loadWabaTemplates();
+        loadRegisterTemplates();
 
         function showToast(message) {
             const existing = document.querySelector('.toast-notification');
@@ -2274,6 +2334,9 @@
                     <div style="display: flex; flex-direction: column; gap: 6px;">`;
                 
                 item.tasks.forEach(t => {
+                    const regTag = (t.whatsapp_template_ids && t.whatsapp_template_ids.length)
+                        ? `<span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600;">💬 Register ×${t.whatsapp_template_ids.length}</span>`
+                        : '';
                     const wabaTag = t.waba_template_code 
                         ? `<span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600;">💬 WABA: ${escapeHtml(t.waba_template_code)}</span>` 
                         : '';
@@ -2315,7 +2378,7 @@
                                 ${t.id ? `<button class="btn" style="padding: 2px 7px; font-size: 11px; background: #3b82f6;" onclick="loadTaskForEdit('${t.id}')">✏️ Edit</button>` : ''}
                             </div>
                         </div>
-                        ${(wabaTag || pushTag || offerTag || revealTag || abandonTag) ? `<div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 2px;">${wabaTag} ${pushTag} ${offerTag} ${revealTag} ${abandonTag}</div>` : ''}
+                        ${(regTag || wabaTag || pushTag || offerTag || revealTag || abandonTag) ? `<div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 2px;">${regTag} ${wabaTag} ${pushTag} ${offerTag} ${revealTag} ${abandonTag}</div>` : ''}
                     </div>`;
                 });
                 nestedTasksHtml += `</div></div>`;
@@ -3948,6 +4011,7 @@
                             <input type="text" class="task-custom-waba-input" value="${isWabaCustomCode(wabaVal) ? escapeHtml(wabaVal) : ''}" placeholder="e.g. any_template_code_123" style="width: 100%; box-sizing: border-box; font-size: 12px; padding: 6px 10px; border: 1px solid #38bdf8; border-radius: 4px; background: rgba(15, 23, 42, 0.9); color: #fff;">
                             <small class="task-custom-waba-hint" style="color: #38bdf8; font-size: 11px; display: block; margin-top: 3px;">💡 Any alphanumeric template name is accepted (e.g. phase_subscription, promo_summer_2026)</small>
                         </div>
+                        ${getRegisterPickerHtml(taskData?.whatsapp_template_ids || [])}
                     </div>
                     <div>
                         <label style="font-weight: 600; color: #94a3b8; font-size: 12px; display: block; margin-bottom: 4px;">Push Template Code</label>
@@ -4066,6 +4130,7 @@
                         conditions: conditions,
                         offer_id: offerIdVal || undefined,
                         waba_template_code: getRowWabaCode(row),
+                        whatsapp_template_ids: getRegPickerIds(row).length ? getRegPickerIds(row) : undefined,
                         push_template_code: row.querySelector('.task-push-code')?.value || undefined,
                         sort_order: parseInt(row.querySelector('.task-sort-order').value) || (idx + 1),
                         is_active: row.querySelector('.task-is-active')?.value === 'true'
@@ -4184,6 +4249,7 @@
                         conditions: conditions,
                         offer_id: offerIdVal || undefined,
                         waba_template_code: getRowWabaCode(row),
+                        whatsapp_template_ids: getRegPickerIds(row).length ? getRegPickerIds(row) : undefined,
                         push_template_code: row.querySelector('.task-push-code')?.value || undefined,
                         sort_order: parseInt(row.querySelector('.task-sort-order').value) || (idx + 1),
                         is_active: row.querySelector('.task-is-active')?.value === 'true'
@@ -4318,6 +4384,8 @@
                         wabaEl.innerHTML = getWabaTemplateSelectHtml(rawWaba);
                         toggleEditCustomWaba(wabaEl, rawWaba);
                     }
+                    const regHost = document.getElementById('edit-reg-picker-host');
+                    if (regHost) regHost.innerHTML = getRegisterPickerHtml(task.whatsapp_template_ids || []);
                     if (sortEl) sortEl.value = task.sort_order ?? 0;
                     if (isActiveEl) isActiveEl.value = task.is_active !== false ? 'true' : 'false';
 
@@ -4387,6 +4455,7 @@
                     wabaVal = wabaSel;
                 }
                 body.waba_template_code = wabaVal;
+                body.whatsapp_template_ids = getRegPickerIds(document.getElementById('edit-reg-picker-host'));
 
                 const pushVal = document.getElementById('edit-task-push')?.value.trim();
                 body.push_template_code = pushVal || null;
