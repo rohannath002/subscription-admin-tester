@@ -985,6 +985,7 @@
                     <div style="display: flex; gap: 8px; margin-top: 5px; flex-wrap: wrap;">
                         <button class="btn" style="background: #3b82f6; flex: 1;" onclick="getJourneyDayById()">Get Day By ID</button>
                         <button class="btn" style="background: #f59e0b; flex: 1;" onclick="updateJourneyDay()">Update Day</button>
+                        <button class="btn" style="background: #059669; flex: 1;" onclick="openAddTaskToDay()">➕ Add Task To This Day</button>
                         <button class="btn" style="background: #dc2626; flex: 1;" onclick="deleteJourneyDay()">Delete Day</button>
                     </div>
 
@@ -1000,7 +1001,7 @@
                     <!-- STANDALONE TASK EDIT FORM -->
                     <div id="standalone-task-edit-form" style="display: none; background: rgba(15, 23, 42, 0.9); border: 1px solid #334155; border-radius: 8px; padding: 14px; margin-bottom: 15px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #1e293b; padding-bottom: 8px;">
-                            <h4 style="margin: 0; color: #38bdf8; font-size: 13px;">✏️ Edit Task: <span id="edit-task-badge" style="font-family: monospace; color: #93c5fd;"></span></h4>
+                            <h4 style="margin: 0; color: #38bdf8; font-size: 13px;"><span id="edit-task-mode-label">✏️ Edit Task:</span> <span id="edit-task-badge" style="font-family: monospace; color: #93c5fd;"></span></h4>
                             <button type="button" onclick="closeStandaloneTaskEdit()" style="background: transparent; border: none; color: #94a3b8; cursor: pointer; font-size: 14px;">✖</button>
                         </div>
 
@@ -1123,7 +1124,7 @@
                         </div>
 
                         <div style="display: flex; gap: 8px;">
-                            <button class="btn" style="flex: 1; background: #f59e0b; color: #1e1e2e; font-weight: 700;" onclick="updateTask()">💾 Save & Apply Task Updates (PATCH)</button>
+                            <button id="edit-task-save-btn" class="btn" style="flex: 1; background: #f59e0b; color: #1e1e2e; font-weight: 700;" onclick="updateTask()">💾 Save & Apply Task Updates (PATCH)</button>
                             <button class="btn btn-secondary" style="flex: 0.3;" onclick="closeStandaloneTaskEdit()">Cancel</button>
                         </div>
                     </div>
@@ -2233,6 +2234,8 @@
                     idCopyButtons += `<button class="btn" style="padding: 2px 8px; font-size: 11px; background: ${btnColor}; margin-left: 4px;" onclick="toggleJourneyActiveStatus('${escapeHtml(item.id)}', ${nextActive})">${btnText}</button>`;
                 } else if (isTask) {
                     idCopyButtons += `<button class="btn" style="padding: 2px 8px; font-size: 11px; background: #3b82f6; margin-left: 4px;" onclick="loadTaskForEdit('${escapeHtml(item.id)}')">✏️ Edit Task</button>`;
+                } else if (isDay) {
+                    idCopyButtons += `<button class="btn" style="padding: 2px 8px; font-size: 11px; background: #059669; margin-left: 4px;" onclick="openAddTaskToDay('${escapeHtml(item.id)}')">➕ Add Task</button>`;
                 }
             }
 
@@ -2335,7 +2338,12 @@
                 
                 item.tasks.forEach(t => {
                     const regTag = (t.whatsapp_template_ids && t.whatsapp_template_ids.length)
-                        ? `<span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600;">💬 Register ×${t.whatsapp_template_ids.length}</span>`
+                        ? t.whatsapp_template_ids.map((rid, ri) => {
+                            const rt = cachedRegisterTemplates.find(x => x.id === rid);
+                            const nm = rt ? rt.name : rid.substring(0, 8) + '…';
+                            const st = rt && rt.status !== 'ACTIVE' ? ` (${rt.status})` : (rt && rt.is_enabled === false ? ' (OFF)' : '');
+                            return `<span title="${escapeHtml(rt ? rt.name : rid)}" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600;">💬 ${ri + 1}. ${escapeHtml(nm)}${escapeHtml(st)}</span>`;
+                        }).join(' ')
                         : '';
                     const wabaTag = t.waba_template_code 
                         ? `<span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600;">💬 WABA: ${escapeHtml(t.waba_template_code)}</span>` 
@@ -4299,9 +4307,52 @@
         }
 
         // --- GRANULAR TASK JS HANDLERS ---
+        // When set, the standalone task form creates a NEW task on this day (POST) instead of PATCHing.
+        let addTaskDayId = null;
+
+        function setTaskFormMode(createDayId) {
+            addTaskDayId = createDayId || null;
+            const label = document.getElementById('edit-task-mode-label');
+            const btn = document.getElementById('edit-task-save-btn');
+            if (label) label.innerText = addTaskDayId ? '➕ New Task on Day:' : '✏️ Edit Task:';
+            if (btn) btn.innerText = addTaskDayId ? '➕ Create Task On This Day (POST)' : '💾 Save & Apply Task Updates (PATCH)';
+        }
+
         function closeStandaloneTaskEdit() {
             const form = document.getElementById('standalone-task-edit-form');
             if (form) form.style.display = 'none';
+            setTaskFormMode(null);
+        }
+
+        async function openAddTaskToDay(dayId) {
+            const id = (dayId || document.getElementById('day-target-id')?.value || '').trim();
+            if (!id) return alert('Pick a day (use the ➕ Add Task button on a day card, or paste a Day ID).');
+            if (!cachedRegisterTemplates.length) await loadRegisterTemplates();
+            setTaskFormMode(id);
+            const badge = document.getElementById('edit-task-badge');
+            if (badge) badge.innerText = `${id.substring(0, 8)}...`;
+            const set = (el, v) => { const e = document.getElementById(el); if (e) e.value = v; };
+            set('edit-task-title', '');
+            set('edit-task-type', 'SEND_WABA');
+            set('edit-task-trigger', 'IMMEDIATE');
+            set('edit-task-delay', 0);
+            set('edit-task-sort', 0);
+            set('edit-task-cond-ig', '');
+            set('edit-task-reveal-mode', 'MANUAL');
+            set('edit-task-max-abandonment', '');
+            set('edit-task-abandonment-cooldown', '');
+            set('edit-task-is-active', 'true');
+            const wabaEl = document.getElementById('edit-task-waba');
+            if (wabaEl) { wabaEl.innerHTML = getWabaTemplateSelectHtml(''); toggleEditCustomWaba(wabaEl, ''); }
+            const regHost = document.getElementById('edit-reg-picker-host');
+            if (regHost) regHost.innerHTML = getRegisterPickerHtml([]);
+            populateEditTaskOffers('');
+            const pushEl = document.getElementById('edit-task-push');
+            if (pushEl) pushEl.innerHTML = getPushTemplateSelectHtml('');
+            syncEditTaskRevealTimer();
+            syncEditTaskAbandonmentBox();
+            const form = document.getElementById('standalone-task-edit-form');
+            if (form) { form.style.display = 'block'; form.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
         }
 
         function syncEditTaskAbandonmentBox() {
@@ -4359,6 +4410,7 @@
 
                 if (res.ok && data?.data) {
                     const task = data.data;
+                    setTaskFormMode(null);
                     const formContainer = document.getElementById('standalone-task-edit-form');
                     const badge = document.getElementById('edit-task-badge');
                     if (badge) badge.innerText = `${task.id.substring(0, 8)}...`;
@@ -4421,12 +4473,16 @@
         }
 
         async function updateTask() {
+            const creating = !!addTaskDayId;
             const id = document.getElementById('task-target-id').value.trim();
-            if(!id) return alert("Please enter a Task ID to update!");
+            if(!creating && !id) return alert("Please enter a Task ID to update!");
 
             const formContainer = document.getElementById('standalone-task-edit-form');
-            if (formContainer && formContainer.style.display === 'none') {
+            if (!creating && formContainer && formContainer.style.display === 'none') {
                 return getTaskById();
+            }
+            if (creating && !document.getElementById('edit-task-title')?.value.trim()) {
+                return alert('Task title is required.');
             }
 
             setResponse('day-response', { loading: true });
@@ -4481,16 +4537,28 @@
                 }
                 if (Object.keys(conditions).length > 0) body.conditions = conditions;
 
-                console.log(`📡 Updating Task ${id} with body:`, body);
-                const res = await fetch(`${BASE_URL}/tasks/${id}`, {
-                    method: 'PATCH',
+                if (creating) {
+                    body.journey_day_id = addTaskDayId;
+                    if (!body.whatsapp_template_ids.length) delete body.whatsapp_template_ids;
+                    ['offer_id', 'waba_template_code', 'push_template_code'].forEach(k => { if (body[k] === null) delete body[k]; });
+                }
+                console.log(creating ? `📡 Creating task on day ${addTaskDayId}:` : `📡 Updating Task ${id} with body:`, body);
+                const res = await fetch(creating ? `${BASE_URL}/tasks` : `${BASE_URL}/tasks/${id}`, {
+                    method: creating ? 'POST' : 'PATCH',
                     headers: HEADERS,
                     body: JSON.stringify(body)
                 });
                 const data = await res.json();
                 setResponse('day-response', { status: res.status, data });
 
-                if (res.ok) {
+                if (res.ok && creating) {
+                    showToast('✅ Task created on day!');
+                    const newId = data?.data?.id;
+                    if (newId) document.getElementById('task-target-id').value = newId;
+                    closeStandaloneTaskEdit();
+                    const queryJourneyId = document.getElementById('day-query-journey-id')?.value;
+                    if (queryJourneyId) getAllJourneyDays();
+                } else if (res.ok) {
                     showToast(`✅ Task ${id.substring(0, 8)}... successfully updated!`);
                     const queryJourneyId = document.getElementById('day-query-journey-id')?.value;
                     if (queryJourneyId) getAllJourneyDays();
